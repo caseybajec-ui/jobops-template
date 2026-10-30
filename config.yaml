@@ -1,0 +1,237 @@
+# Operational config. Edit freely.
+
+cost:
+  # The monthly cap runs from this date. Spend before it is history and belongs
+  # on a cost page, not in red on every screen for nine months.
+  #
+  # THIS IS THE ONLY DEFINITION. score_jobs.py reads it from here and web's
+  # genconfig bakes it from here; it used to be hardcoded as 5.00 in score_jobs
+  # as well, so raising it in one place would have moved the number the meter
+  # DISPLAYS while the scorer went on refusing at the old one.
+  #
+  # Set cap_reset to the day you deploy, so the meter counts from your first
+  # real run and not from an epoch that makes every batch ever submitted look
+  # like this month's spend. monthly_cap is a hard stop: the scorer refuses
+  # before submitting a batch that would pass it. Keep it under whatever
+  # console-side limit you set on the API account, so this is the first wall
+  # and not the last.
+  cap_reset: '2026-01-01T00:00:00+00:00'  # set to the day you deploy
+  monthly_cap: 10.00
+
+# The Neon plan. Facts about the ACCOUNT, not about the code.
+#
+# WHY THIS IS HERE AND NOT A CONSTANT. transfer_allowance_gb was hardcoded to
+# the free tier's 5 GB in web/lib/transfer.js. The original instance moved to
+# Launch, and a constant nobody remembers to change made the denominator
+# wrong by 100x -- in the dangerous direction. The warn threshold would have
+# fired at 3.5 GB and "ALLOWANCE EXHAUSTED, nothing should run against the
+# database" at 5 GB, which on Launch is 1% of the real budget. The digest would
+# have said stop, every morning, while 99% of the allowance sat unused -- and an
+# alarm that is always wrong is one you stop reading.
+#
+# That is the deployed cost meter's failure exactly: "$29.88 / $5.00 OVER CAP"
+# against a cap that had been reset. The number was not missing, it was
+# confidently wrong, which is worse than absent.
+#
+# Baked into the bundle at build time by web/lib/genconfig.mjs, like
+# monthly_cap, for the reason in CLAUDE.md: a value production needs cannot
+# travel by filesystem. Change the plan, change it here, and the digest, the
+# threshold and the prose all move together.
+database:
+  # Neon Launch; the free tier is 5. Neon reports usage but never the limit,
+  # so this is the only place the ceiling is known. If you are on the free
+  # tier, write 5 here or the exhaustion warning will never fire.
+  transfer_allowance_gb: 500
+  # Warn at 70%, chosen from the response time rather than from taste -- the
+  # same rule as WINDOW_HORIZON_DAYS. At the measured post-fix rate of ~0.5
+  # GB/month, 70% of 500 GB is years of warning; the threshold earns its keep
+  # if a regression starts moving gigabytes a day, where it still leaves weeks.
+  # A threshold at 95% would be an alarm about something already lost.
+  transfer_warn_at: 0.70
+
+# Are we ahead or behind. Targets, not aspirations.
+#
+# The dashboard has never said this. It counts what the PIPELINE found -- roles,
+# scores, packs -- and never what the owner DID, which is the only half they
+# control. "0 of 3 applications this month" is a fact about the owner; "141
+# roles scored 60+" is a fact about the fetcher.
+#
+# NO MOTIVATIONAL COPY ANYWHERE DOWNSTREAM. The line states counts against
+# targets and stops. There is no "keep going", no streak, no encouragement --
+# a tool that congratulates you for a week with nothing in it is a tool you
+# stop believing, and this one already has a rule against inventing a number
+# nobody can derive ("there is no on-track score and there will not be one").
+# This is not that: every figure here is a target the owner set and a count
+# from a real table.
+#
+# PHASES, because the target is not flat. For a US business-school new grad,
+# Sep-Nov is consulting and APM cohorts, Jan-Mar is when the defense LDPs
+# open, and the rest is rolling. A single number would be wrong in all three.
+# Re-cut the phases for your own cycle.
+#
+# If these are wrong, that is an edit HERE, by the owner. Nothing in the code
+# adjusts them, and nothing infers them from what has been managed so far --
+# a target that moves to match the outcome is not a target.
+on_track:
+  # Applications submitted, per calendar month, by phase. Keys are inclusive
+  # month ranges as MM-MM; the first match wins.
+  applications_per_month:
+    "09-11": 3      # consulting and APM windows: few, high-effort, dated
+    "01-03": 3      # defense LDP season
+    "04-12": 2      # rolling
+  # New contacts messaged per week. Five is the cadence already in CLAUDE.md
+  # and in lib/people.js; stated here so the meter and the rule are one number.
+  outreach_per_week: 5
+  # Replies received per month. Not a target the owner controls -- it is the
+  # one figure here that measures whether the messages are landing, which is
+  # why it is separate from the count that can be hit by sending more.
+  replies_per_month: 2
+
+# What the owner WANTS, as opposed to what they ARE.
+#
+# THIS IS NOT profile.json AND THAT IS THE POINT. profile.json goes into the
+# scorer's system prompt, so a preference written there would change how every
+# future role is scored — and these must not. In the original corpus the
+# highest-fit role on the board had one location the owner did not want;
+# weighting location into fit would have pushed the best role down the page
+# to express a preference.
+#
+# A preference is a thing you decide WITH, not a thing that decides for you. So
+# these drive display and an optional filter, and nothing else. They are baked
+# into the bundle at build time by web/lib/genconfig.mjs, like cap_reset, for
+# the reason recorded in CLAUDE.md: a value production needs cannot travel by
+# filesystem.
+#
+# graduation_year MUST agree with profile.json's `graduation`; genconfig fails
+# the build if the two disagree. One person, one year.
+preferences:
+  # The graduating year, the earliest season you can start, and the one you
+  # would rather start in.
+  graduation_year: 2027
+  can_start_season: summer
+  preferred_season: fall
+  # Metro keys from web/lib/geo.js: nyc, sf, la, remote. home_metro is a fact
+  # about a role, not a mark against it. Remote is acceptable.
+  preferred_metros: [nyc, sf]
+  home_metro: la
+  remote_acceptable: true
+  # Annual USD base. null = no floor. DISPLAY AND FILTER ONLY, never a scoring
+  # input: the Inbox can tag a role whose published maximum falls under it, and
+  # nothing else reads it. An unparseable value ("80k") fails the build rather
+  # than silently reading as 0 and tagging every role.
+  salary_min: null
+
+# Email, to the owner and to nobody else.
+#
+# The recipient is baked from profile.json owner.email at build time and is not
+# configurable here on purpose. These switches decide WHETHER something is
+# sent, never WHO it goes to — CLAUDE.md rule 3 stands, and it stands because
+# no code exists that could address anyone else.
+#
+# Sent from the daily GitHub Actions run, never from a Vercel request handler.
+# A page render must not be able to send mail.
+notifications:
+  # The master switch. Off means nothing is sent, including failures.
+  enabled: true
+  # WHO IT COMES FROM. Must be a sender address on a domain you have verified
+  # in Resend (DKIM and both SPF CNAMEs), or Resend refuses the send. Until
+  # you have one, Resend's onboarding sender works for mail to your own
+  # address only; web/lib/constants.js carries it as the fallback.
+  #
+  # THE `to` ADDRESS IS NOT HERE AND MUST NEVER BE. It is baked from
+  # profile.json into web/lib/config.generated.js, the send function takes no
+  # recipient, and test_notify.mjs asserts both. The from address is a return
+  # label; the to address is the rule — CLAUDE.md rule 3, the tool never
+  # sends to another human, and the one exception is it emailing its owner.
+  from: JobOps <jobops@example.com>
+  # Per trigger, in the order they take priority. The subject line is whichever
+  # of these fired highest.
+  triggers:
+    # A watched careers page started saying applications are open. Top of the
+    # digest, above even a failed run: a missed window costs a whole cycle and
+    # nothing recovers it, while a failed pipeline is recoverable by re-running
+    # the pipeline. See watch_pages.py.
+    window_opened: true
+    # The five people to write to today, from suggested_contacts.
+    todays_five: true
+    # A watched page's content changed at all. Lower: news to read, not a
+    # number to distrust.
+    pages_changed: true
+    # The daily run errored. The one trigger exempt from the once-a-day cap,
+    # because a pipeline that fails twice is worth hearing about twice.
+    pipeline_failure: true
+    # A board that used to list roles answered with 0, or the fetch errored, or
+    # every board returned nothing. Second in priority behind an outright
+    # failure: it means part of today's data is stale while the run was green
+    # and the freshness stamp says today. Turning this off means a company can
+    # silently drop out of the search and nothing will say so.
+    board_anomaly: true
+    # Every deadlines firm marked `rolling: true` with an OPEN window and
+    # nothing submitted. REPEATS DAILY UNTIL SUBMITTED — the only trigger here
+    # that repeats, which is only defensible because marking one applied stops
+    # it for good. The firms come from companies.yaml via web/lib/consulting.js,
+    # not from here.
+    consulting_open: true
+    # An external window closing inside 7 days with nothing submitted against
+    # it. Repeats at 3 days and at 1, and NOT on the days between.
+    closing_window: true
+    # An apply flow that cannot be completed — an hCaptcha that loops, a site
+    # answering 406. Repeats daily until lifted, for the same reason
+    # consulting_open does: `python apply_blocks.py unblock <key>` ends it.
+    # Turning this off means a window can quietly close while the only thing
+    # that knew you could not apply to it stays silent.
+    manual_apply: true
+    # A task that went overdue yesterday, or a follow-up that became owed.
+    overdue: true
+    # A new Excellent-fit role since the last digest.
+    new_excellent: true
+    # Monday only: last week's counts, the same line the Daily banner shows.
+    weekly_retro: true
+
+# ---------------------------------------------------------------------------
+# APPLY-LOG INGESTION
+#
+# An external apply bot (the original used Grok) submits applications and
+# produces a log; the owner pastes it in by hand at /applications. NOTHING
+# HERE CONTACTS THE BOT. There is no client, no webhook, no polling and no
+# credential — the paste box is the only way in, and that is the whole
+# security model. The key name is historical; nothing Grok-specific remains.
+grok_ingest:
+  # How long applied_apps may go without a new import before the Monday digest
+  # says so.
+  #
+  # THREE DAYS, because the failure this catches is silent by construction: if
+  # the owner stops pasting, or the bot stops producing a log, applied_apps
+  # simply stops growing — and a table that stops growing looks exactly like a
+  # table nobody has written to yet. That is this project's #1 failure class,
+  # and the only reason it is catchable here is that somebody stated how long
+  # is too long.
+  #
+  # Monday only, so a quiet weekend is not an alarm.
+  grok_stale_days: 3
+
+  # The most rows one paste may create. A guard against a paste that is not an
+  # apply log at all — a whole page of HTML, or the wrong clipboard — turning
+  # into hundreds of junk rows that then have to be found and removed by hand.
+  max_rows_per_paste: 200
+
+  # THE LLM FALLBACK'S OWN CEILING, inside the Ask box's cap rather than
+  # beside it.
+  #
+  # The extractor runs in lib/ask.js and shares that file's key, endpoint and
+  # counter, because CLAUDE.md requires JOBOPS_ANTHROPIC_KEY and
+  # api.anthropic.com to live in exactly one file -- a second caller is
+  # "exactly the thing that gets added without anyone thinking about a
+  # counter". So an extraction counts against the 30/month Ask cap.
+  #
+  # This is the sub-cap that stops a run of unparseable pastes eating the
+  # questions. Five: the fallback only fires when BOTH deterministic parsers
+  # found nothing, which should be rare, and if it is not rare the format has
+  # changed and the answer is to fix the parser rather than to keep paying a
+  # model to read around it.
+  extract_monthly_cap: 5
+
+  # Characters of the raw paste echoed back in the red banner when nothing
+  # parsed. Enough to see WHICH paste failed and what shape it was; not so much
+  # that the page becomes the paste.
+  echo_chars: 400

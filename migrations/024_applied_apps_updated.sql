@@ -1,0 +1,12 @@
+-- WHEN A ROW WAS LAST TOUCHED, which is not when it was created.
+--
+-- The "apply log has gone quiet" warning read max(created_at), and created_at
+-- only moves on an INSERT. A paste or an API push that updates rows it already
+-- holds -- the normal case once the log has been imported a few times --
+-- left the warning in place, so the page said the log was stale on the same
+-- afternoon it was imported. A warning that is wrong whenever you do the right
+-- thing is a warning you stop reading.
+--
+-- NULL on every existing row, by design: a row never updated since creation
+-- has nothing to say here, and the readers COALESCE(updated_at, created_at).
+-- +column applied_apps updated_at TEXT

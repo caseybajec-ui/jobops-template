@@ -1,0 +1,49 @@
+# jobs.db and anything derived from it. The retired copy is jobs.db.retired-*,
+# which the bare `jobs.db` pattern did NOT match — a 94 MB database one
+# `git add -A` away from the repo.
+jobs.db*
+__pycache__/
+out/
+voice/
+# `.env` matches ONLY a file with that exact name. Next.js reads its own env from
+# web/.env.local — a different filename, therefore NOT covered, and that is where
+# JOBOPS_ANTHROPIC_KEY has to live for `npm run dev` to see it (web/lib/ask.js
+# reads process.env directly and never goes through pgcheck.mjs's readEnv()).
+# Leaving it uncovered put a live Anthropic key one `git add -A` from the repo.
+.env
+.env.local
+.env.*.local
+web/node_modules/
+web/.next/
+# ANCHORED TO THE REPO ROOT, and the leading slash is load-bearing.
+#
+# This was `outreach/`, which in gitignore matches a directory of that name at
+# ANY depth — so when the app grew a route at web/app/outreach/, the page was
+# silently untracked. Not an error, not a warning: `git status` simply did not
+# list it, the commit would have gone in without it, and Vercel would have
+# served a 404 for /outreach while it rendered perfectly on localhost. That is
+# "renders locally is not renders in production" with a one-character cause.
+#
+# What must stay ignored is the REPO-ROOT outreach/ directory, which holds
+# drafted messages to real people — other people's names and contact details.
+# It stays on the deny list even though contacts and outreach live in Postgres
+# now and nothing writes it any more: a file that is no longer produced is not a
+# file that is safe to commit, because the old one still has names in it.
+/outreach/
+/contacts.csv
+
+logs/
+.daily.lock
+kill_list.md
+
+# Baked from config.yaml at build time by web/lib/genconfig.mjs.
+web/lib/config.generated.js
+web/lib/resumes.generated.js
+jobops-local/state.json
+jobops-local/PAUSE
+
+# Setup inputs: copied into their real homes by setup/SETUP.md, never
+# committed twice. The resume PDFs live in web/public/resume/ once installed.
+setup/inputs.yaml
+setup/*.pdf
+setup/cover_letter_example.*

@@ -1,0 +1,5 @@
+requests
+pyyaml
+anthropic
+python-dotenv
+pg8000

@@ -1,0 +1,284 @@
+# The daily loop, in the cloud rather than on a laptop.
+#
+# Windows Task Scheduler ran this at 07:10 and could only fire when the laptop
+# was awake. A job search does not pause because a lid is shut, and "the fetch
+# silently did not run" is the failure mode Daily's freshness stamp exists to
+# catch — better not to have it in the first place.
+#
+# WHAT THIS COSTS. fetch, gate and verify_deadlines make no model calls and are
+# free. `score` is the only step that spends, it runs Haiku on the Batch API at
+# one sample, and it refuses on its own if the month is already at the $5 cap.
+# There is deliberately no second cost check here: daily_run.sh carried a
+# hand-written estimate that could disagree with the real run, which is exactly
+# the "estimate that is decoration" failure in CLAUDE.md. One implementation, in
+# the code that actually spends.
+#
+# Actions minutes are free on public repos and this one is private, where the
+# free tier is 2,000 minutes a month. A run is a couple of minutes.
+
+name: daily
+
+on:
+  schedule:
+    # 14:10 UTC. That is 07:10 in Los Angeles while the US is on PDT, and 06:10
+    # once the clocks go back on 1 November — GitHub cron has no timezone, so a
+    # fixed UTC time drifts by an hour twice a year. An hour either way does not
+    # matter for a job board that updates overnight; it is noted so nobody
+    # later reads the shift as a bug.
+    - cron: "10 14 * * *"
+  # So it can be run by hand from the Actions tab, which is also how you test it
+  # the first time rather than waiting until tomorrow morning.
+  workflow_dispatch:
+
+# One run at a time. Two overlapping fetches against one database is how a
+# 2.5-minute run once took 110 minutes.
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      # The CLI talks to Neon over the DIRECT connection, never the pooled one:
+      # it does DDL and long transactions, and PgBouncer in transaction mode
+      # supports neither. See pgdb.py.
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Python's stdout on the runner is UTF-8 already, but the CLIs call
+      # utf8_stdout() themselves and this makes the intent explicit rather than
+      # depending on the runner's locale staying what it is today.
+      PYTHONIOENCODING: utf-8
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Fails the run if the secrets are missing, rather than letting pgdb fall
+      # back to a local SQLite file that does not exist on the runner and
+      # producing a green run that fetched into nothing.
+      - name: Check the secrets arrived
+        run: |
+          test -n "$DATABASE_URL_UNPOOLED" || { echo "DATABASE_URL_UNPOOLED is not set"; exit 1; }
+          test -n "$ANTHROPIC_API_KEY" || { echo "ANTHROPIC_API_KEY is not set"; exit 1; }
+          python -c "import pgdb; assert pgdb.using_pg(), 'not pointing at Postgres'; print('Postgres: yes')"
+
+      # Migrations apply THEMSELVES, here, before anything reads the database.
+      #
+      # Everything from 002 on is owned by the app — the people tables, the
+      # application lifecycle, the SF-86 pack — and no Python creates any of it.
+      # Somebody had to run them, and "somebody" is a rule enforced by memory,
+      # which CLAUDE.md is explicit about: if a rule matters, the default must
+      # enforce it. So the daily run does it, on a machine that can always reach
+      # Neon, whether or not a laptop is open or on a network that allows 5432.
+      #
+      # Every migration is idempotent, so running all of them every morning is
+      # the point rather than a cost: a table that is already there is a no-op,
+      # and a column that is already there is a probe and a skip.
+      #
+      # It fails the run loudly if it cannot apply. A deployed app whose tables
+      # are missing does not crash — it renders "the people tables are not in
+      # this database yet" — and a green cron over a half-migrated database is
+      # exactly the kind of quiet wrong state the freshness stamp exists for.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # config.yaml, profile.json and companies.yaml, baked into a real module.
+      #
+      # THE RUNNER NEVER BUILDS THE WEB APP, so `prebuild` never fires and
+      # lib/config.generated.js — which is gitignored, because it is generated —
+      # simply does not exist here. Run #9's notify step died on exactly that:
+      # ERR_MODULE_NOT_FOUND, on a step that could never have worked on CI.
+      #
+      # It runs FIRST, before any other node script, so anything added later can
+      # import the generated module without having to know this. Generating it
+      # rather than teaching one script to parse YAML keeps a single parser:
+      # two implementations of "what does config.yaml say" is how they drift.
+      #
+      # It fails the run if a source file is missing or unparseable, which is
+      # the same hard failure the build has, for the same reason.
+      - name: Bake the config
+        working-directory: web
+        run: |
+          npm ci --omit=dev --no-audit --no-fund
+          npm run --silent genconfig
+
+      - name: Apply any new migrations
+        working-directory: web
+        run: |
+          for m in ../migrations/*.sql; do
+            case "$m" in
+              # 001 is the Postgres port of the schema fetch_jobs.py creates in
+              # SQLite, and it was applied by hand in the Neon console. It uses
+              # Postgres-only syntax (GENERATED ALWAYS AS IDENTITY) that the
+              # SQLite half of this runner cannot parse, so it is not re-run.
+              *001_initial.sql) continue ;;
+            esac
+            echo "--- $m"
+            node lib/applymigration.mjs "$m"
+          done
+
+      # Decompose the two standing projects, and label every deadline as a real
+      # closing or a date the owner set himself.
+      #
+      # RUNS EVERY DAY, and is a true no-op after the first: every row it creates
+      # has a derived id, and it compares before it updates, so a second run
+      # reports "0 created, 0 updated". That is the point rather than a cost —
+      # it means the parents and children exist in Neon within a day of the code
+      # that renders them being deployed, instead of the site showing the new UI
+      # against un-decomposed data until somebody remembers to run a script.
+      #
+      # IT ALSO PICKS UP NEW WORK. A window confirmed today drops out of the
+      # undated list, and a company that reaches two contacts drops out of the
+      # find-names ranking; tomorrow's run reflects both.
+      #
+      # JOBOPS_DIRECT=1 because CI carries only the direct Neon string, which is
+      # correct for a one-shot script that opens one connection and exits. The
+      # app still uses the pooled endpoint and the assertion that enforces that
+      # is untouched — see DIRECT_CLI in web/lib/driver.js.
+      #
+      # It runs BEFORE the scoring step deliberately: `score` exits non-zero at
+      # the monthly cap, and a capped month must not also stop the tracker's
+      # structure from being kept up to date.
+      - name: Decompose the standing tasks
+        working-directory: web
+        env:
+          JOBOPS_DIRECT: "1"
+        run: node lib/backfill_units.mjs
+
+      - name: Fetch the boards
+        id: fetch
+        run: python fetch_jobs.py fetch
+
+      # PAGES THE FETCHER CANNOT READ. Consulting, PM cohorts and the primes'
+      # LDPs run on Workday and custom pages with no machine-readable board, so
+      # they are structurally invisible to the step above and always will be.
+      # McKinsey's 2027 window closed on 11 August while companies.yaml said
+      # mid/late September; nothing here noticed, and that is a whole cycle.
+      #
+      # No model, no cost: hashing and regex. `continue-on-error` because a
+      # careers page having a bad night must not fail a run whose fetch, gate
+      # and score all succeeded -- the watcher reports its own failures into
+      # the digest's health line, where an unwatchable page is visible rather
+      # than fatal.
+      - name: Watch the pages with no board
+        id: watch
+        continue-on-error: true
+        run: python watch_pages.py check
+
+      - name: Gate and classify
+        id: gate
+        run: python score_jobs.py gate
+
+      # The only step that costs money. It refuses by itself at the cap and
+      # returns 1, which fails the run — deliberately, because a month that has
+      # hit the cap is something the owner should be told about rather than have
+      # quietly skipped.
+      #
+      # IT DOES NOT WAIT FOR THE BATCH, and must never be made to. The Batch
+      # API offers no latency guarantee below 24 hours, so a blocking poll
+      # inside a job with a 30-minute timeout is wrong by design rather than
+      # unlucky: daily #21 polled for 27m49s and was cancelled with the results
+      # still in flight and already paid for.
+      #
+      # So the step collects whatever is outstanding, submits what is new, and
+      # exits. Scores land on the NEXT run — the digest is therefore reporting
+      # on a batch submitted the morning before, which is the price of not
+      # having a job that can be killed halfway through one.
+      #
+      # It returns 1 if it had to reap a batch stuck past 24h. That is money
+      # spent on roles never scored, and it reddens the step so the digest
+      # says so; the run still submits the released roles first.
+      - name: Score what survived
+        id: score
+        run: python score_jobs.py score --model claude-haiku-4-5-20251001 --samples 1
+
+      # Reports what is stale or unconfirmed. Never scrapes; a human closes the
+      # loop from the Daily ladder.
+      - name: Deadline worklist
+        id: deadlines
+        if: always()
+        run: python verify_deadlines.py
+
+      # WHAT THIS RUN DID, written into the database the app reads.
+      #
+      # `if: always()` and it never fails: this is the step that reports a
+      # failure, so it has to run after one — and a problem writing the row must
+      # not turn a successful fetch into a red build.
+      #
+      # Daily's "UPDATED N HOURS AGO" is computed from the newest job row. That
+      # answers "is the data fresh" and cannot answer "did this morning's run
+      # fail", because a failure leaves yesterday's data looking exactly like a
+      # run with nothing new to fetch.
+      - name: Record the run
+        if: always()
+        working-directory: web
+        env:
+          JOBOPS_DIRECT: "1"
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          # EVERY STAGE OUTCOME, because job.status alone is not enough.
+          # A step that never ran has an EMPTY outcome here -- that is the
+          # signal. daily #21 was cancelled at the 30-minute timeout with
+          # scoring blocked on a batch poll; this step then completed green
+          # in one second and wrote a row saying a run had happened. The
+          # missing-run alert counts COMPLETED runs, and this is what tells
+          # it which those were.
+          STAGES="fetch=${{ steps.fetch.outcome }}"
+          STAGES="$STAGES,watch=${{ steps.watch.outcome }}"
+          STAGES="$STAGES,gate=${{ steps.gate.outcome }}"
+          STAGES="$STAGES,score=${{ steps.score.outcome }}"
+          STAGES="$STAGES,deadlines=${{ steps.deadlines.outcome }}"
+          echo "stages: $STAGES"
+          node lib/recordrun.mjs "${{ job.status }}" "$RUN_URL" "$STAGES"
+
+      # THE DIGEST. Last, after the status row exists, so a failed run can be
+      # reported by the same run that failed.
+      #
+      # ONE RECIPIENT, hardcoded in web/lib/constants.js. There is no address
+      # here, no address in the secret, and no way to pass one — CLAUDE.md rule
+      # 3 stands: this tool never sends to another human, and the one exception
+      # is it emailing its own owner about his own data.
+      #
+      # WITHOUT RESEND_API_KEY IT PRINTS INSTEAD OF SENDING and records the
+      # attempt as 'dry-run'. That is how it was built and tested before the
+      # account existed, and it means adding the secret is the only step needed
+      # to turn it on.
+      #
+      # `if: always()` and it never fails the run. A mail provider having a bad
+      # afternoon must not turn a successful fetch, gate and score into a red
+      # build — and the whole point of this step is to report failures, so it
+      # has to survive one.
+      - name: Email the digest
+        if: always()
+        working-directory: web
+        env:
+          JOBOPS_DIRECT: "1"
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          # Your deployed app's URL, as a repository VARIABLE (Settings ->
+          # Secrets and variables -> Actions -> Variables), so the links in
+          # the digest point at your instance. Unset, lib/notify.mjs says so
+          # in the digest rather than linking to nothing.
+          JOBOPS_BASE_URL: ${{ vars.JOBOPS_BASE_URL }}
+          # NEON'S OWN TRANSFER FIGURE. A secret existing in the repo is NOT an
+          # environment variable on the runner -- Actions only exposes what a
+          # step maps, and this one was never mapped. lib/neonusage.mjs reads
+          # process.env.NEON_API_KEY, found nothing, and returned the "not being
+          # read" state, which renders as missing data rather than as an error.
+          # So the digest correctly reported that it could not see the
+          # allowance, every night, for a reason that looked like a missing
+          # secret and was actually a missing line.
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: node lib/notify.mjs

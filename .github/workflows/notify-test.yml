@@ -1,0 +1,63 @@
+# Send the test email, on demand.
+#
+# WHY A SEPARATE WORKFLOW. The brief asked for a "send a test email now" button
+# and also that sending happen from Actions rather than from a Vercel request
+# handler. Those pull in opposite directions: a button on a page that actually
+# sends IS a request handler sending mail, and the safety of this whole feature
+# rests on the send path being somewhere a person deliberately triggers.
+#
+# So the button on /about links straight here. One click on "Run workflow" and
+# the email goes — no cron wait, and no code path on the web side that can send
+# anything. The page also renders the exact text it would send, so the CONTENT
+# is verifiable without sending at all.
+#
+# It sends to the address hardcoded in web/lib/constants.js. There is no input
+# for a recipient and there must never be one.
+
+name: notify-test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # Says so plainly rather than sending nothing and looking successful. A
+      # missing key is the expected state until the account exists, and "it
+      # printed the email instead" is a different outcome from "it sent one".
+      - name: Check the key is there
+        run: |
+          if [ -z "$RESEND_API_KEY" ]; then
+            echo "RESEND_API_KEY is not set as a repository secret."
+            echo "The next step will PRINT the email instead of sending it."
+          else
+            echo "RESEND_API_KEY is set. The next step will send."
+          fi
+
+      - name: Send the test email
+        working-directory: web
+        env:
+          JOBOPS_DIRECT: "1"
+        run: |
+          npm ci --omit=dev --no-audit --no-fund
+          # lib/config.generated.js is a BUILD artifact and is gitignored, and
+          # this runner never builds the web app — so without this line the
+          # script dies on ERR_MODULE_NOT_FOUND before it can send anything.
+          # That is exactly how run #9's digest step failed.
+          npm run --silent genconfig
+          node lib/notify.mjs --test

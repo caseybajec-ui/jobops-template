@@ -1,0 +1,26 @@
+# Keep the working tree LF, on every machine.
+#
+# core.autocrlf is `true` on this machine, which rewrites text files to CRLF on
+# checkout. That is exactly the thing that broke the deadline parser: several
+# parsers here are hand-written and split on "\n", so a CRLF file reads as lines
+# with a trailing \r and every regex quietly matches nothing.
+#
+# It also matters for hosting: the daily job will run on a Linux GitHub Actions
+# runner, and a repo whose contents change shape depending on which OS checked it
+# out is a bug waiting for a different machine to find.
+#
+# `eol=lf` overrides autocrlf for the working tree, so a fresh clone here and a
+# checkout on the runner produce byte-identical files — and test_line_endings.py
+# stays meaningful rather than failing on everyone else's clone.
+* text=auto eol=lf
+
+# PowerShell scripts are Windows-only and nothing in this repo parses them.
+*.ps1 text eol=crlf
+
+# Never normalise these.
+*.db binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.pdf binary

@@ -1,0 +1,111 @@
+#!/bin/sh
+# THE FAST GATE: everything pure, plus the two checks that need only a database.
+# ~2 minutes. No build, no Chrome — those are in .githooks/pre-push.
+#
+# Enabled with:  git config core.hooksPath .githooks
+# Both gates by hand:  .\precommit.ps1 -Full
+# Skipped with:  git commit --no-verify   (don't)
+#
+# This exists because a commit went in on a build that had already failed — a
+# JSX comment in an attribute list — and nobody read the exit code. The fix for
+# that is not being more careful; it is not being asked.
+
+set -e
+cd "$(git rev-parse --show-toplevel)"
+HOOK="PRE-COMMIT"
+DIST=.next-precommit
+. "$(dirname "$0")/lib.sh"
+
+CHANGED=$(git diff --cached --name-only --diff-filter=ACMR)
+set_docs_only
+if [ "$docs_only" = yes ]; then
+  printf 'pre-commit: staged files are all .md/.txt — SKIPPING the checks that need a database\n'
+  printf '            (test_filters.py, test_askcap.mjs). Everything else runs.\n'
+fi
+
+printf 'pre-commit: python tests... '
+for t in test_filters.py test_class_year.py test_gates.py test_blockers.py \
+         test_fetch_hash.py test_apply_packs.py \
+         test_regex_boundaries.py test_shell_escapes.py test_ask_isolation.py \
+         test_line_endings.py test_nothing_private_staged.py \
+         test_resume_parity.py \
+         test_schema_parity.py audit_dead_assertions.py \
+         test_reconnect.py test_ci_scripts.py test_manual_gate.py \
+         test_watch.py test_resolve.py test_critic.py test_prep.py \
+         test_google.py test_sourcing.py test_reader.py \
+         test_async_scoring.py; do
+  [ -f "$t" ] || continue
+  # test_filters.py reads scored rows out of whichever database is configured.
+  # Everything else in this list is pure or builds its own throwaway schema.
+  if [ "$t" = test_filters.py ] && needs_db; then continue; fi
+  out=$(python "$t" 2>&1) || fail_checked "$t" "$out"
+done
+printf 'ok\n'
+
+if [ -d web/node_modules ]; then
+  # config.yaml is baked into a module at build time rather than read at
+  # request time (web/lib/genconfig.mjs). Generate it BEFORE the js tests,
+  # because test_config.mjs imports the result and a fresh clone has not
+  # built yet.
+  printf 'pre-commit: genconfig... '
+  out=$(cd web && npm run --silent genconfig 2>&1) \
+    || fail_checked "genconfig" "$out"
+  # The resume bake is its own generator, with its own required files. It began
+  # inside genconfig and broke test_config.mjs, whose fixture is a throwaway
+  # tree holding a config.yaml and nothing else — a fair fixture for a config
+  # generator. A generator should fail on its own inputs, not a neighbour's.
+  out=$(cd web && npm run --silent genresumes 2>&1) \
+    || fail_checked "genresumes" "$out"
+  printf 'ok\n'
+
+  printf 'pre-commit: js tests... '
+  for t in test_display.mjs test_sqlshim.mjs test_classes.mjs test_grids.mjs test_config.mjs test_grok.mjs \
+           test_tour.mjs test_firstfive.mjs test_ask.mjs \
+           test_today.mjs test_windows.mjs test_palette.mjs test_people.mjs \
+           test_lifecycle.mjs test_sf86.mjs test_why.mjs \
+           test_scheduler.mjs test_actions.mjs test_chips.mjs \
+           test_contrast.mjs test_prefs.mjs test_clearance.mjs \
+           test_pulse.mjs test_families.mjs test_keys.mjs test_zip.mjs \
+           test_notify.mjs test_outbound.mjs test_day.mjs test_resume.mjs \
+           test_coding.mjs test_boards.mjs test_submissions.mjs \
+           test_coldstart.mjs test_ontrack.mjs test_sourcing.mjs \
+           test_blocked.mjs; do
+    out=$(cd web && node "$t" 2>&1) || fail_checked "web/$t" "$out"
+  done
+  printf 'ok\n'
+
+  # THE ASK CAP, BY VALUE. In the fast gate despite writing, because it needs no
+  # build and no browser — it inserts marked rows into ask_queries, requires the
+  # count to move, requires the cap to refuse at 30, then deletes them and FAILS
+  # if the count has not returned to where it started. 21s.
+  #
+  # It runs against whatever database is configured, Neon included — unlike
+  # test_writes.mjs, which stays off production because it invents a contact.
+  # The difference is what the rows are and what happens to them.
+  if ! needs_db; then
+    printf 'pre-commit: ask cap (by value)... '
+    out=$(cd web && node test_askcap.mjs 2>&1) \
+      || fail_checked "web/test_askcap.mjs" "$out"
+    printf 'ok\n'
+
+    # THE APPLY-LOG DEDUPE, against a real Postgres in a scratch schema.
+    #
+    # It belongs on the FAST gate rather than with the browser stages because
+    # the property it guards is cheap to break and expensive to notice: the
+    # dedupe lives in three places -- the unique index in migration 022, the
+    # route's lookup, and dedupeKey() in lib/grok.js -- and a pure test of the
+    # last cannot see the first two disagree with it. The first version of the
+    # route disagreed, and this is what said so.
+    #
+    # It writes, but never to production: its own schema, dropped at the end,
+    # with no `public` on the search path. See test_runhistory.mjs.
+    printf 'pre-commit: apply-log dedupe... '
+    out=$(cd web && JOBOPS_DIRECT=1 node test_applied_db.mjs 2>&1) \
+      || fail_checked "web/test_applied_db.mjs" "$out"
+    printf 'ok\n'
+  fi
+else
+  printf 'pre-commit: web/node_modules missing, skipping web checks\n'
+fi
+
+printf '\nfast gate passed. The build and the browser stages run on PUSH.\n'

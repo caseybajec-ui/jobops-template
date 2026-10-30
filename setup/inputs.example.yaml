@@ -1,0 +1,74 @@
+# Everything the setup step needs to know about you, in one file.
+#
+# Copy this to setup/inputs.yaml and fill it in, or let Claude Code fill it in
+# from what you tell it. Every value here ends up in profile.json, config.yaml,
+# companies.yaml or daily.yaml; nothing is read from this file at run time.
+#
+# TRUE FACTS ONLY. This file and your resume are the only sources every claim
+# the tool makes about you can trace to. Nothing here is checked by anyone
+# but you.
+
+name: Jordan Reyes
+email: jordan.reyes@example.edu        # the ONLY address the digest ever goes to; also the form default
+phone: null                            # optional; only the profile card uses it
+linkedin_url: https://www.linkedin.com/in/jordan-reyes-example/
+
+school: Westlake University, Hayden School of Business
+school_short: Westlake Hayden          # how you say it in a message ("I'm a Westlake Hayden senior")
+school_search_terms: [Westlake Hayden, Westlake University]   # first term seeds LinkedIn people searches
+school_linkedin_alumni_url: https://www.linkedin.com/school/westlake-university/people/   # or null
+degree: B.S. Business Administration
+gpa: 3.8                               # or null to leave it off everything
+graduation: May 2027                   # month and year; sets the class year everywhere
+class_label: senior                    # how you describe yourself this year
+home_city: Austin, TX
+
+# Where you want to work. Codes come from web/lib/geo.js METROS:
+#   nyc sf la boston chicago dc seattle austin denver dallas atlanta miami
+#   houston philadelphia minneapolis phoenix san_diego portland slc raleigh remote
+preferred_metros: [nyc, sf]
+home_metro: austin
+remote_acceptable: true
+
+# Pay floor in annual USD base, or null for none. Display only: roles under it
+# are tagged on the Inbox row, never hidden and never re-ranked.
+salary_min: 85000
+
+# The kinds of role you want, in your words. The setup step turns these into
+# the title filters in companies.yaml and the targets block in profile.json.
+job_types:
+  - associate product manager / APM program
+  - product operations
+  - business operations / strategy & operations
+  - chief of staff
+  - strategy consulting analyst
+industries:
+  - AI software
+  - fintech
+  - developer tools
+# What you will never apply to. Becomes profile.json hard_no and title_exclude.
+excluded:
+  - investment banking
+  - sales quota roles (SDR, BDR, AE)
+  - roles that require a CS or engineering degree as a hard screen
+
+# Companies you already know you want. Optional: the setup step keeps the
+# template's board list for your industries and adds these after verifying
+# each one's job board with `python fetch_jobs.py discover <name>`.
+target_companies: [Stripe, Anthropic, Ramp, Vercel]
+
+# Programs with application windows the fetcher cannot see (consulting, APM
+# cohorts, rotational programs). The setup step looks each one up and fills
+# the deadlines block in companies.yaml with a dated, sourced entry.
+programs:
+  - McKinsey Business Analyst
+  - Accenture Strategy Analyst
+  - Google APM
+  - Uber APM
+
+# Exactly as you want them written on every form, cover note and message.
+work_authorization: US citizen. No sponsorship required.
+clearance: No current or prior clearance. No known disqualifying factors. Willing to undergo the process.
+start: Full-time, summer 2027 start (new grad). No remaining internship cycle.
+
+timezone: America/Los_Angeles

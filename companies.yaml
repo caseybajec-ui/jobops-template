@@ -1,0 +1,954 @@
+# Target companies, grouped by the ATS that hosts their public job board.
+# Verify any slug with:
+#     python fetch_jobs.py discover <company-name>
+# which tries Greenhouse, Lever, Ashby, and Rippling and reports EVERY board that
+# answers with a valid payload. It validates response shape, not status code:
+# Ashby returns HTTP 200 with a JS shell for any slug at all, so a 200 proves
+# nothing. If discover flags a board with only 1 role, verify it by hand — that
+# is the signature of a demo or test board, not a real one.
+#
+# Companies on custom ATSs (McKinsey, BCG, Bain, most large banks, many VC firms)
+# can't be polled. Track those in `manual` and check them by hand.
+#
+# THIS IS A TEMPLATE LIST. The slugs are public facts and were each verified
+# live on the date in their note; the tiers and the one-line notes are a
+# starting point for a business / product / operations new grad and the setup
+# step re-tunes them for the owner. Add, retire or re-tier freely — but verify
+# every new slug with `discover` before it goes in, and never delete a retired
+# entry (see Mach Industries below for why).
+
+greenhouse:
+  - slug: anthropic
+    display_name: Anthropic
+    tier: 1
+    note: >
+      Tier 1. Frontier AI lab. Product, operations and policy roles sit beside
+      research; a small number of early-career tracks exist and fill fast.
+  - slug: stripe
+    display_name: Stripe
+    tier: 1
+    note: >
+      Tier 1. Payments infrastructure, and the reference for engineering-adjacent
+      product, operations and strategy roles.
+  - slug: figma
+    display_name: Figma
+    tier: 1
+    note: >
+      Tier 1. Design tooling with a strong new-grad product culture; design-adjacent
+      PM and product-ops roles.
+  - slug: airbnb
+    display_name: Airbnb
+    tier: 1
+    category: product
+    note: >
+      Tier 1, added for PM coverage. Verified live 2026-09-02: greenhouse slug
+      'airbnb', 171 open roles. Strong-brand product organisation with a real
+      new-grad PM track; the reason to carry it is breadth of PM postings, not
+      a defense angle.
+  - slug: vercel
+    display_name: Vercel
+    tier: 1
+    note: >
+      Tier 1. Frontend cloud and deployment platform; developer-facing product,
+      growth and operations roles.
+  - slug: databricks
+    display_name: Databricks
+    tier: 1
+    note: >
+      Tier 1. Runs a named APM programme with a dated start — one of very few that are
+      machine-readable.
+  - slug: brex
+    display_name: Brex
+    tier: 1
+    note: >
+      Tier 1. Fintech with forward-deployed and AI product roles that reward shipping
+      over pedigree.
+  - slug: airtable
+    display_name: Airtable
+    tier: 1
+    note: >
+      Tier 2. Product-ops and bizops roles at a company small enough that a shipped
+      side product stands out.
+
+ashby:
+  - slug: ramp
+    display_name: Ramp
+    tier: 1
+    note: >
+      Tier 1. Fast-growing fintech hiring forward-deployed AI engineers — the closest
+      commercial analogue to deployment strategy.
+  - slug: linear
+    display_name: Linear
+    tier: 1
+    note: >
+      Tier 2. Small, high-bar product team. Few openings, but a shipped SaaS is
+      exactly the signal they screen for.
+  - slug: plaid
+    display_name: Plaid
+    tier: 1
+    category: product
+    note: >
+      Tier 1, added for PM coverage. Verified live 2026-09-02: ashby slug
+      'plaid', 104 open roles. Fintech infrastructure — product and product-ops
+      roles close to billing, payments and data APIs.
+  - slug: notion
+    display_name: Notion
+    tier: 1
+    note: >
+      Tier 1. Runs an explicit early-career software track and publishes pay.
+  - slug: openai
+    display_name: OpenAI
+    tier: 1
+    note: >
+      Tier 1. Frontier lab. Most roles want more experience, so treat this as
+      relationship-building rather than an application queue.
+  - slug: supabase
+    display_name: Supabase
+    tier: 1
+    note: >
+      Tier 1. Open-source Postgres platform. Small, remote-heavy team with
+      developer-facing product and ops roles. (Prose said Tier 2 while the tier:
+      field said 1 until 2026-09-05; only the field is read by code, and the
+      field was the intent.)
+
+# `category:` is the COMPANY's kind, and it drives the coloured dot beside every
+# company name in the app. Four values only: defense, product, consulting, vc.
+#
+# It is almost always derivable and so it is almost always absent: every entry
+# under a `defense_*` group is defense, and everything else defaults to product.
+# The key appears ONLY where neither of those is right — Palantir sits under
+# `lever:` and is a defense company, and the three growth-equity boards sit under
+# `new_greenhouse:` and are not product companies.
+#
+# Do NOT confuse this with the per-ROLE `category` column in the jobs table. That
+# one is written by the fetcher, is NULL on most rows, and taking MAX() of it
+# once made Stripe read as a venture firm because four of its postings are
+# tagged vc and "vc" sorts after "product".
+lever:
+  - slug: palantir
+    display_name: Palantir
+    category: defense
+    tier: 1
+    note: Deployment Strategist and Forward Deployed roles — the canonical customer-embedded, non-engineering entry point into defense and enterprise software.
+
+rippling:
+  # Rippling's own ATS. Public JSON at
+  # api.rippling.com/platform/api/ats/v1/board/<slug>/jobs — the board endpoint
+  # carries no description, so the fetcher makes one extra GET per posting.
+  - slug: rippling
+    display_name: Rippling
+    tier: 1
+    note: Moved here from `greenhouse`; they run their own ATS product.
+
+# ---------- Defense tech ----------
+# Nearly all require US citizenship. On clearance, see the phrasing rule in
+# CLAUDE.md — never claim eligibility, only that no disqualifying factors are known.
+
+defense_greenhouse:
+  - slug: andurilindustries
+    display_name: Anduril
+    tier: 1
+    note: Mission ops, chief of staff, bizops roles. Largest board on the list (~2200 roles).
+  - slug: scaleai
+    display_name: Scale AI
+    tier: 1
+    note: Public sector / federal team.
+  - slug: epirus
+    display_name: Epirus
+    tier: 1
+    note: >
+      Tier 1 defense. Directed-energy counter-drone; the kind of hardware-adjacent
+      ops role a business degree can enter.
+  - slug: vannevarlabs
+    display_name: Vannevar Labs
+    tier: 1
+    note: >
+      Tier 1 defense. Software for national security; many roles need an active
+      clearance, so check the clearance line before applying.
+  - slug: chaosindustries
+    display_name: Chaos Industries
+    tier: 1
+    note: Verified 2026-08-24. Was listed under ashby; it is Greenhouse.
+  - slug: nerostechnologies
+    display_name: Neros
+    tier: 1
+    note: Verified 2026-08-24. Was listed under ashby as "neros".
+  - slug: trueanomalyinc
+    display_name: True Anomaly
+    tier: 1
+    note: Verified 2026-08-24. Was listed under ashby as "trueanomaly".
+
+defense_lever:
+  - slug: shieldai
+    display_name: Shield AI
+    tier: 1
+    note: >
+      Verified 2026-08-24 against shield.ai/careers, which links here. An Ashby
+      board also answers at slug "shield-ai" with a near-identical role count —
+      they appear to be mid-migration. DO NOT add the Ashby board as well: it
+      would double-count every Shield AI role. Re-check which one their careers
+      page links to before switching.
+      Also note: greenhouse slug "shield" is an unrelated demo board, not them.
+  - slug: hermeus
+    display_name: Hermeus
+    tier: 1
+    note: Verified 2026-08-24. Was listed under greenhouse.
+
+defense_ashby:
+  - slug: saronic
+    display_name: Saronic
+    tier: 1
+    note: >
+      Tier 1 defense. Autonomous surface vessels, scaling fast in Austin.
+      Mission-operations roles are the entry point, and they publish no pay on any
+      role.
+  - slug: applied
+    display_name: Applied Intuition
+    tier: 1
+    note: Applied Intuition. Verified 2026-08-24; slug is "applied", not "appliedintuition".
+  - slug: hadrian-automation
+    display_name: Hadrian
+    tier: 1
+    note: Hadrian. Verified 2026-08-24; slug is "hadrian-automation".
+  - slug: skydio
+    display_name: Skydio
+    tier: 1
+    note: Verified 2026-08-24. Was listed under greenhouse.
+  - slug: mach
+    display_name: Mach Industries
+    tier: 1
+    # RETIRED 2026-09-09. Kept rather than deleted: an absent row reads as
+    # "nobody has tried", and the next person to look adds this same wrong
+    # slug back. The reason travels with the entry so the finding survives.
+    retired: >-
+      no valid ATS board, slug returns Ashby default empty response
+    note: >
+      Verified 2026-08-24 on the slug alone, which is exactly the mistake this
+      project keeps making: Ashby answers HTTP 200 with a JS shell for ANY
+      slug, so a 200 proves nothing. It fetched 0 roles every night from the
+      day it was added. `resolve` finds no ATS link on mach.industries, and
+      `discover` reports "responded but listed 0 roles (likely wrong slug)".
+      Mach's real board is not machine-readable; if one appears, replace the
+      `retired` key rather than adding a second entry.
+
+defense_rippling:
+  - slug: overland-ai
+    display_name: Overland AI
+    tier: 1
+    note: Verified 2026-08-24. Rippling ATS; was previously believed to have no board.
+  - slug: forterra
+    display_name: Forterra
+    tier: 1
+    note: >
+      Autonomous Mission Systems. Verified 2026-08-24 via Rippling ATS. Their site
+      is forterra.com — forterra.ai does not resolve, and Forterra Building
+      Products is a different company.
+
+manual:
+  # No usable API. Check by hand or set a calendar reminder. Deadlines matter here.
+  - name: Castelion
+    url: https://www.careers-page.com/castelion-corporation
+    tier: 1
+    note: >
+      Real roles are on careers-page.com (a custom ATS). BUT as of 2026-08-24 a
+      Greenhouse board exists at slug "castelioncorporation" containing exactly one
+      posting titled "Test Role 8.24" (Torrance, CA) — they appear to be standing
+      Greenhouse up right now. Re-run `discover castelion-corporation` periodically;
+      when that board fills with real roles, move Castelion to defense_greenhouse.
+  - name: Firestorm Labs
+    url: https://www.linkedin.com/company/firestorm-labs
+    tier: 1
+    note: >
+      Board NOT found on Greenhouse / Lever / Ashby / Rippling as of 2026-08-24, and
+      their careers domain could not be confirmed — firestormlabs.com belongs to an
+      unrelated company ("Shady Pets, LLC") and firestormlabs.io / firestorm.aero do
+      not resolve. San Diego, ~$82M raised, expeditionary additive manufacturing for
+      UAS. Needs a manual look to find the real careers URL before it can be polled.
+  - name: McKinsey (Business Analyst, full-time)
+    url: https://www.mckinsey.com/careers
+    tier: 2
+    note: >
+      NO DATES IN THIS NOTE, ever. An earlier version said the window "typically
+      closes mid/late September"; the real window that year closed on 11 August,
+      and acting on the note would have cost the cycle. Dates live in the
+      `deadlines` section below, each with a confidence label; do not restate them here.
+  - name: BCG (Associate, full-time)
+    url: https://careers.bcg.com
+    tier: 2
+  - name: Bain (Associate Consultant, full-time)
+    url: https://www.bain.com/careers
+    tier: 2
+  - name: Lockheed Martin / RTX / Northrop Grumman / General Dynamics / L3Harris
+    url: https://www.lockheedmartinjobs.com
+    tier: 2
+    note: Workday ATSs, no public JSON. Look for "Leadership Development Program" (LDP) and
+          "Finance / Strategy Rotational" tracks — those are the new-grad entry points at primes.
+  - name: School career portal / Handshake
+    url: https://joinhandshake.com
+    tier: 1
+    note: >
+      Most consulting and many VC analyst programs recruit on campus first, and
+      campus dates differ from the national ones. Point this URL at your own
+      school's portal; the setup step does not know it.
+
+# ---------- Added 2026-08-25, each verified to have program or entry roles ----------
+# An initial list of ~31 candidates was checked. 10 held up; 21 were deleted rather
+# than left as dead weight. Verification: board answers with a valid payload, more
+# than one role, and at least one role classified program or entry.
+#
+# The whole big-tech APM category (Google, Meta, Microsoft, Uber, LinkedIn,
+# Salesforce, Atlassian, Adobe, DoorDash, Capital One) has NO public board on
+# Greenhouse/Lever/Ashby/Rippling — they run Workday or custom ATSs. Same
+# structural blindness as consulting and VC, so they belong in `deadlines`, not here.
+
+new_greenhouse:
+  - slug: coinbase
+    display_name: Coinbase
+    tier: 1
+    note: Verified 2026-08-25. 174 roles, 7 entry.
+  - slug: roblox
+    display_name: Roblox
+    tier: 1
+    note: Verified 2026-08-25. 236 roles, 3 program + 4 entry — best APM signal of the batch.
+  - slug: samsara
+    display_name: Samsara
+    tier: 1
+    note: Verified 2026-08-25. 265 roles, 2 program + 3 entry.
+  - slug: verkada
+    display_name: Verkada
+    tier: 1
+    note: Verified 2026-08-25. 279 roles, 1 program + 9 entry — most entry roles of the batch.
+  - slug: duolingo
+    display_name: Duolingo
+    tier: 1
+    note: Verified 2026-08-25. 73 roles, 2 entry.
+  - slug: dropbox
+    display_name: Dropbox
+    tier: 2
+    note: Verified 2026-08-25. 41 roles, 2 entry.
+  - slug: aechelontechnology
+    display_name: Aechelon Technology
+    category: defense
+    tier: 1
+    note: >
+      Verified 2026-08-25. Shield AI subsidiary, found via shield.ai/careers.
+      18 roles, 2 entry.
+  - slug: bvpanalyst
+    display_name: Bessemer (Analyst Program)
+    category: vc
+    tier: 2
+    note: >
+      Verified 2026-08-25. Bessemer's analyst programme board — the only VC
+      analyst pipeline in the corpus that is machine-readable. Only 2 roles, both
+      program. Their summer class usually targets the FOLLOWING year's graduates,
+      so check which class year the live posting names and watch for a full-time
+      posting if yours is not it.
+  - slug: generalatlantic
+    display_name: General Atlantic
+    category: vc
+    tier: 2
+    note: Verified 2026-08-25. 16 roles, 1 entry. Growth equity; thin but real.
+  - slug: iconiq
+    display_name: ICONIQ
+    category: vc
+    tier: 2
+    note: >
+      Verified 2026-08-25 by reading real titles off the board, not just probing
+      the slug. 25 roles, and the reason it is here: "Analyst, Client Service
+      (Entry-Level, New York and San Francisco)" and "Analyst, Financial Advisory
+      (Entry-Level)" — a named entry-level analyst track at a growth-equity firm,
+      which is the tier-2 target that is normally invisible to the fetcher. The
+      third machine-readable VC/growth analyst pipeline in the corpus, after
+      Bessemer and General Atlantic.
+
+new_ashby:
+  - slug: vanta
+    display_name: Vanta
+    tier: 1
+    note: Verified 2026-08-25. 107 roles, 2 entry.
+
+# ---------- InfraRed 100 (2026): Lightspeed portfolio companies ----------
+#
+# Added 2026-09-05. Every slug below was probed with fetch_jobs.probe_board,
+# which validates response SHAPE, not status codes, and each board's IDENTITY
+# was then confirmed by reading a real posting off it — not by the slug matching
+# the company name. Role counts are as of that probe.
+#
+# THE SECTION NAME IS WHAT MAKES THESE FETCH. cmd_fetch matches `greenhouse` or
+# anything ending `_greenhouse`, so `infrared_greenhouse` is polled like any
+# other group. The `source:` field on each entry is provenance for a human;
+# nothing reads it, and nothing should start reading it instead of the section.
+#
+# NOT PREFIXED `defense_`. score_jobs.cmd_gate treats every `defense_*` section
+# as a defense company, and none of these are.
+#
+# SIX OF THE 27 DID NOT RESOLVE and are deliberately absent rather than
+# guessed at: Arctic Wolf, Cyera, Emergent, Nexthop AI, Patronus AI, Reactor.
+# Each was probed against Greenhouse, Lever, Ashby and Rippling on the
+# obvious slug plus hand-written variants. They are almost certainly on a custom
+# or embedded ATS. Adding a wrong slug is worse than an absent one: it fetches
+# somebody else's roles under the target company's name.
+#
+# RE-CHECKED 2026-09-07 with `fetch_jobs.py resolve`, which reads the company's
+# OWN careers page for a link to ashbyhq / greenhouse / lever rather than
+# guessing a slug -- the method that finally resolved Mistral, whose board is
+# `ashby/mistral.ai` and whose dot no variant generator would ever produce.
+# All six still unresolved, and this time for a reason that was READ rather
+# than inferred:
+#
+#   Arctic Wolf   arcticwolf.com  careers page loads, no ATS link in the html
+#   Cyera         cyera.io        careers page loads, no ATS link in the html
+#   Patronus AI   patronus.ai     careers page loads, no ATS link in the html
+#   Nexthop AI    nexthop.ai      /careers 404s; /join-us has no ATS link
+#   Emergent      emergent.sh     no ATS link on any careers path tried
+#   Reactor       reactor.com     no ATS link on any careers path tried
+#
+# All of them render their board client-side, so the link exists only after
+# JavaScript runs. THE RESOLVER IS NOT BROKEN: pointed at mistral.ai it finds
+# `ashby/mistral.ai`, probes it, and prints three real postings whose text
+# begins "ABOUT MISTRAL". A tool that reports nothing has to be shown finding
+# something before its nothing means anything.
+#
+# MACH INDUSTRIES, settled, and now RETIRED (2026-09-09). `resolve` finds no
+# ATS link on mach.industries, and `discover` reports the board "responded but
+# listed 0 roles (likely wrong slug)" -- which is Ashby answering HTTP 200 for
+# a slug that is not theirs, the same behaviour that makes a 200 from Ashby
+# prove nothing.
+#
+# It was left in on the reasoning that it costs one request a night. That was
+# wrong about the cost. The request is free; the ANOMALY LINE is not. A board
+# that has never returned a role is a permanent zero, so it produced a line in
+# the digest's health section every single morning for a board that was never
+# Mach's -- and a warning that is always there is one that stops being read,
+# which is the failure mode the health section exists to avoid.
+#
+# It carries `retired:` now: skipped by the fetcher, still in the file with
+# its reason, so nobody re-adds the same wrong slug on the assumption that
+# nobody tried. If a real board appears, replace the key.
+#
+# EON IS EXCLUDED ON PURPOSE, and this is the Shield AI failure repeating.
+# `ashby/eon` answers with 7 roles and looks like a clean hit. It is a stealth
+# a16z-backed space company in Culver City building free-space laser links in
+# MEO — its own posting says so — and has nothing to do with the InfraRed 100
+# EON. A board that answers is not a board that is theirs.
+#
+# ===================== MONITORING ONLY. NOT AN APPLICATION LIST. =====================
+#
+# THESE 16 COMPANIES ARE NOT 16 APPLICATIONS. Read that again next cycle, because
+# a block of freshly-added tier-1 and tier-2 names reads like a to-do list and is
+# not one.
+#
+# THE MEASUREMENT, from the first real fetch of all 16 boards: roughly 1,300
+# open titles, of which ~170 passed title_ok, of which exactly TWO carried an
+# early-career signal (one Associate Product Manager, one Software Engineer New
+# Grad — in Paris). The rest are overwhelmingly senior ICs, solutions architects
+# and sales. For a new grad with a dated start, every req on these boards today
+# will be filled long before the start date.
+#
+# THE DEPLOYMENT STRATEGIST TITLES ARE THE TRAP, and this was settled by reading
+# the postings rather than the titles. Mistral runs seventeen "AI Deployment
+# Strategist" reqs and one of them is "- USA" in Palo Alto — the exact shape of
+# Palantir Deployment Strategist. Every one of them scored at the bottom, and the
+# posting says why in its own words: "4+ years in a client-facing strategic and
+# technical role" and "a degree in a relevant scientific field". A MATCHING
+# TITLE IS NOT A MATCHING ROLE — the same lesson as `ashby/eon`, one layer in:
+# that board was not theirs, and this board is theirs but the req is still not
+# a new grad's.
+#
+# So what they are FOR: knowing which companies open roles shaped like the ones
+# the owner wants, so relationships can be built now and applications made when
+# the dated programmes post. That is intelligence, and it belongs on Company
+# view — which is the landing view for exactly this reason — not in a queue of
+# things to do this week. Mistral in particular is worth OUTREACH now precisely
+# BECAUSE it runs that shape of role in the US continuously; it is pinned into
+# the outreach queue by decision rather than by score, and the row says which.
+#
+# WHAT WOULD CHANGE THIS: a dated or new-grad req appearing on one of these
+# boards, IN THE US. The daily fetch will surface it as an Excellent-fit role in
+# the digest if it does. Until then, the correct number of applications to these
+# 16 is zero.
+# =====================================================================================
+
+infrared_greenhouse:
+  - slug: chainguard
+    display_name: Chainguard
+    tier: 2
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: greenhouse slug 'chainguard', 81 roles. Software
+      supply-chain security. Tier 2 as security-adjacent to the defense track;
+      the board today is almost entirely sales and senior solutions architects.
+  - slug: gleanwork
+    display_name: Glean
+    tier: 1
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: greenhouse slug 'gleanwork', 117 roles. NOTE THE
+      SLUG — 'glean' resolves to nothing on any of the four ATSs, so the obvious
+      guess would have recorded this company as unresolved. Enterprise AI
+      search; a real business-operations and GTM surface, which is why it is
+      tier 1 rather than tier 3 like the rest of the infra names.
+  - slug: grafanalabs
+    display_name: Grafana Labs
+    tier: 3
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: greenhouse slug 'grafanalabs', 131 roles. Observability.
+      Large board, but the reachable surface is solutions engineering and sales.
+  - slug: scaleops
+    display_name: ScaleOps
+    tier: 3
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: greenhouse slug 'scaleops', 57 roles, served from
+      job-boards.eu.greenhouse.io. Kubernetes cost optimisation. Board is
+      dominated by Account Executive reqs, which title_exclude drops.
+
+infrared_ashby:
+  - slug: clickhouse
+    display_name: ClickHouse
+    tier: 3
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: ashby slug 'clickhouse', 178 roles. Analytical
+      database. Deep board, heavily senior — every product-manager req on it
+      today is Principal.
+  - slug: docker
+    display_name: Docker
+    tier: 3
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: ashby slug 'docker', 62 roles. Developer tooling.
+  - slug: elevenlabs
+    display_name: ElevenLabs
+    tier: 1
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: ashby slug 'elevenlabs', 252 roles — the largest
+      board of the 15. Tier 1 on brand and on surface: it is the only one of
+      these companies running named "Deployment Strategist" reqs, the
+      Palantir-shaped role. Those four are all "Lead" and non-US today, so they
+      drop on seniority — worth watching for the IC and US versions rather than
+      applying now.
+  - slug: exa
+    display_name: Exa
+    tier: 3
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: ashby slug 'exa', 55 roles. Identity confirmed from
+      its own posting text, which names Lightspeed as an investor. AI search
+      infrastructure powering Cursor and Cognition.
+  - slug: fireworks
+    display_name: Fireworks AI
+    tier: 3
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: ashby slug 'fireworks' (NOT 'fireworksai'), 69 roles.
+      Inference platform. Carries the ONLY early-career-signalled title across
+      all 15 boards: Associate Product Manager.
+  - slug: inferact
+    display_name: Inferact
+    tier: 3
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: ashby slug 'inferact', 21 roles. Founded by the
+      creators and core maintainers of vLLM. Board is entirely "Member of
+      Technical Staff" engineering today.
+  - slug: mistral.ai
+    display_name: Mistral AI
+    tier: 1
+    category: product
+    source: infrared100_lightspeed
+    # A DECISION, NOT A SCORE. Every scored Mistral role sits at the bottom, so
+    # nothing derived from the corpus would ever queue this company. The owner
+    # pinned it anyway, and the reason renders on the row. Delete the
+    # `outreach_pin` key to unpin; edit the text to change the reason.
+    # The display name is right for the page and wrong for the QUERY.
+    # schoolPeopleSearchUrl builds a KEYWORD search, so every token has to
+    # match: "Mistral AI" makes LinkedIn require the literal "AI" alongside,
+    # and people write "Mistral" on their profiles.
+    search_as: Mistral
+    outreach_pin: Runs 17 AI Deployment Strategist reqs incl. one in Palo Alto - the Palantir DS shape, hired continuously in the US. Every current req wants 4+ yrs and a science degree, so this is relationship-building for a future opening, not an application.
+    note: >
+      Verified 2026-09-05: ashby slug 'mistral.ai' — WITH THE DOT. That is the
+      literal Ashby org handle, read off mistral.ai/careers, which links to
+      jobs.ashbyhq.com/mistral.ai. Every sane variant ('mistral', 'mistralai',
+      'mistral-ai') resolves to nothing, so this company was recorded unresolved
+      until the careers page was read. When a slug will not resolve, the
+      company's own careers page is the authority — not a longer list of guesses.
+      178 roles, 42 pass title_ok, the most of any of these boards.
+      THE EXCEPTION TO THE MONITORING-ONLY NOTE ABOVE. Mistral runs SEVENTEEN
+      "AI Deployment Strategist" reqs, one of them "- USA" in Palo Alto, and its
+      own posting names defense and the public sector. That is the same shape as
+      Palantir Deployment Strategist. It also carries a "Software Engineer, New
+      Grad" req — one of only two early-career titles across all 16 InfraRed
+      boards. Worth reading properly rather than just watching.
+  - slug: judgmentlabs
+    display_name: Judgment Labs
+    tier: 3
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: ashby slug 'judgmentlabs', 5 roles. Learning
+      infrastructure for AI agents. Small board — all five are engineering.
+  - slug: raindrop
+    display_name: Raindrop
+    tier: 3
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: ashby slug 'raindrop', 9 roles. Monitoring for AI
+      agents. Carries a Forward Deployed Engineer req — a customer-embedded
+      shape worth watching even where the title says engineer.
+  - slug: semgrep
+    display_name: Semgrep
+    tier: 2
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: ashby slug 'semgrep', 9 roles. Static analysis and
+      code security. Tier 2 as security-adjacent; the whole board is senior
+      today.
+  - slug: sphinx
+    display_name: Sphinx
+    tier: 3
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: ashby slug 'sphinx', 8 roles. Identity confirmed from
+      posting text: AI agents automating finance onboarding. Its "GTM" req is a
+      strategic-generalist role working directly with the CEO — on fit, the
+      single best-shaped posting of the 15 boards, though it is unleveled and
+      almost certainly wants someone who can start now.
+  - slug: temporal
+    display_name: Temporal
+    tier: 3
+    category: product
+    source: infrared100_lightspeed
+    note: >
+      Verified 2026-09-05: ashby slug 'temporal', 66 roles. Durable execution
+      infrastructure.
+
+# ---------- Title filters ----------
+# Matching is WORD-BOUNDARY, not bare substring. Bare substrings silently
+# over-excluded: "intern" killed every "International" role, "iv" killed
+# "Activity" and "Drive", and "lead" killed "Leadership" — which defeated the
+# "leadership development" include term entirely. See test_filters.py.
+#
+# Evaluation order in title_ok():
+#   1. title_exclude  -> drop (hard-no function, regardless of level)
+#   2. title_senior   -> drop (too senior)
+#   3. title_level    -> PASS (explicit early-career signal)
+#   4. title_include  -> pass if a topic term matches
+# Unleveled titles fall through to step 4, so startup roles that carry no level
+# signal either way still reach the scorer rather than being dropped.
+#
+# THESE FIVE LISTS ARE TUNED, NOT GUESSED. They encode months of reading what
+# each term did to a corpus of ~10,000 titles. The setup step re-tunes them for
+# the owner's job types (an engineer wants "engineer" back in title_include; a
+# student with an internship cycle left wants "intern" out of title_exclude).
+# Any change must keep `python test_filters.py` green.
+
+# Topic signals. Deliberately NOT "engineer" on its own — it matched ~700
+# staff-level hardware roles at Anduril alone. Topic match is not fit.
+title_include:
+  - product
+  - associate
+  - analyst
+  - founding
+  - chief of staff
+  - strategy
+  - strategic
+  - operations
+  - bizops
+  - business operations
+  - growth
+  - forward deployed
+  - deployment
+  - mission
+  - program manager
+  - technical program
+  - investment
+  - venture
+  - government
+  - federal
+  - public sector
+  - defense
+  - national security
+  - capture
+  - corporate development
+  - go-to-market
+
+# Positive early-career signals. A match here passes even without a topic term,
+# because "New Grad Rotational Program" may carry no topic word at all.
+title_level:
+  - new grad
+  - new graduate
+  - university
+  - university grad
+  - early career
+  - entry level
+  - entry-level
+  - campus
+  - rotational
+  - leadership development
+  - apm
+  - associate product manager
+  - graduate program
+  - analyst program
+  - "i"          # standalone level token, e.g. "Product Analyst I"
+  - "2027"
+
+# Seniority signals. Checked before title_include, so these drop a role even if
+# it matches a topic term. NOTE: "chief" is deliberately absent — it would kill
+# "Chief of Staff", a tier-1 target. "manager" is absent for the same reason:
+# "Product Manager" is a legitimate new-grad title.
+title_senior:
+  - senior
+  - sr
+  - staff
+  - principal
+  - director
+  - "head of"
+  - vp
+  - president
+  - distinguished
+  - fellow
+  - architect
+  - senior manager
+  - group manager
+  # A GPM is typically an eight-year title, and "group manager" does not
+  # catch it: "Group Product Manager" has a word between the two, so the
+  # literal never matches. Seven real GPM postings were passing the filter.
+  - group product manager
+  # The abbreviation, which matches NOTHING in the corpus today — pure
+  # insurance, added because a board that writes "GPM, Growth" would
+  # otherwise slip straight through. Safe as a bare token because
+  # _term_re's boundaries are NON-ALPHANUMERIC: it fires on "(GPM)" and
+  # "GPM," but never inside a longer word.
+  - gpm
+  - lead
+  - "ii"
+  - "iii"
+  - "iv"
+
+# Exempt from the seniority check ONLY (title_exclude still applies).
+# "Chief of Staff" is a tier-1 target and contains "staff", which is otherwise a
+# reliable seniority signal ("Staff Engineer", "Staff+ Security Engineer").
+title_protect:
+  - chief of staff
+
+# Hard-no functions, dropped regardless of level.
+title_exclude:
+  - sales
+  - account executive
+  - sales development
+  - recruiter
+  - recruiting coordinator
+  - intern           # the setup step removes this if the owner still has an internship cycle
+  - internship
+  - contractor
+  - temporary
+
+# ---------- Calendar-driven deadlines ----------
+# Consulting, VC, and the primes' rotational programmes are STRUCTURALLY INVISIBLE
+# to the fetcher: they run custom ATSs with no public JSON. They are also the only
+# hard deadlines in the whole search. A wrong note here already nearly cost a
+# cycle — an old comment said MBB "closes mid/late September"; McKinsey actually
+# closed on 11 August that year.
+#
+# EVERY ROW BELOW IS A PROMPT TO CHECK, NOT A FACT. The template ships the
+# well-known programmes with NO dates, `status: unconfirmed` and
+# `confidence: historical-estimate`, and a deliberately stale `verified:` so
+# every one of them shows as STALE in the UI until the owner reads the firm's
+# own page. The only way a row becomes `verified` is a human typing the date
+# in — on the Daily page ("checked it", with a date) or here.
+#
+# confidence:
+#   verified            — OFFICIAL: employer-stated, read from the firm's own site
+#   secondary-source    — consistent across 2+ independent trackers/university pages
+#   historical-estimate — inferred from prior years; treat as a prompt to check
+#   planning-target     — NOT a company date at all. A readiness date the owner set
+#                         for themselves, for a firm that has published nothing. The
+#                         date lives in `target:`, NEVER in `closes:` — the app and
+#                         verify_deadlines.py both refuse a planning-target row that
+#                         carries `closes`, because fed through as a close it rendered
+#                         with the same countdown as a verified deadline. That is the
+#                         McKinsey failure in a new form: a date nobody at the firm
+#                         set, dressed as a fact.
+#
+# rolling: true       — the firm has said there is no cutoff (open until filled).
+#                       A stated fact, so it renders as one instead of "not confirmed".
+#                       Rolling firms with an OPEN window get a daily reminder in the
+#                       digest until something is submitted (web/lib/consulting.js).
+#
+# class_year          — the setup step writes it from profile.json's graduation on
+#                       every row. It is omitted here on purpose so a cloned template
+#                       cannot carry somebody else's class year.
+#
+# minutes:            — optional; how long the ACTION takes, not the window. Daily's
+#                       ladder refuses to put a task at the top that does not fit the
+#                       time available. A stated fact — nothing infers it.
+#
+# Closed windows keep their date so they resurface next cycle and so Forecast
+# stops treating them as live. Re-check with: python verify_deadlines.py
+# Anything verified more than 14 days ago shows as STALE in the UI.
+
+deadlines:
+  # --- MBB: fixed national deadlines, typically mid-summer for a full-time start ---
+  - firm: McKinsey
+    category: consulting
+    program: Business Analyst, US full-time
+    # class_year: set by the setup step
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://www.mckinsey.com/careers
+    verified: 2026-01-01
+    note: Verify on the firm's site. Campus dates differ from the national one; ask career services.
+
+  - firm: Bain
+    category: consulting
+    program: Associate Consultant, full-time
+    # class_year: set by the setup step
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://www.bain.com/careers
+    verified: 2026-01-01
+    note: Verify on the firm's site. Bain has run an early option months before the main deadline.
+
+  - firm: BCG
+    category: consulting
+    program: Associate, undergraduate full-time
+    # class_year: set by the setup step
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://careers.bcg.com
+    verified: 2026-01-01
+    note: Verify on the firm's site. The intern and full-time deadlines differ; take the full-time one.
+
+  # --- Tier 2 consulting: rolling, open until filled. Submission date is the filter ---
+  - firm: Deloitte
+    category: consulting
+    program: Strategy & Operations / Consulting, undergraduate
+    # class_year: set by the setup step
+    rolling: true
+    minutes: 60
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://apply.deloitte.com
+    verified: 2026-01-01
+    note: Verify on the firm's site. Rolling — roles close as they fill, so apply as soon as materials are ready.
+
+  - firm: Accenture
+    category: consulting
+    program: Strategy & Consulting, undergraduate
+    # class_year: set by the setup step
+    rolling: true
+    minutes: 60
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://www.accenture.com/us-en/careers/local/entry-level-students
+    verified: 2026-01-01
+    note: Verify on the firm's site. Rolling; same late-summer window as Deloitte and EY-Parthenon.
+
+  - firm: EY-Parthenon
+    category: consulting
+    program: Associate, undergraduate
+    # class_year: set by the setup step
+    rolling: true
+    minutes: 60
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://www.ey.com/en_us/careers/students
+    verified: 2026-01-01
+    note: Verify on the firm's site. Rolling; late-summer window.
+
+  # --- Big-tech APM: NOT FETCHABLE. All run Workday or a custom ATS ----------
+  # Probed Google, Meta, Microsoft, Uber, LinkedIn, Salesforce, Atlassian, Adobe,
+  # DoorDash and Capital One across Greenhouse, Lever, Ashby and Rippling. None has
+  # a readable public board. These windows are SHORT — Google's last cycle was 28
+  # days, LinkedIn's successor programme ran five — and must be checked by hand.
+  - firm: Google APM
+    category: product
+    program: Associate Product Manager, new grad
+    # class_year: set by the setup step
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://www.google.com/about/careers/applications/jobs/results/?q=associate%20product%20manager
+    verified: 2026-01-01
+    note: Verify on the firm's site. Historically a ~4-week fixed window in autumn; have materials ready before it opens.
+
+  - firm: Meta RPM
+    category: product
+    program: Rotational Product Manager
+    # class_year: set by the setup step
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://www.metacareers.com/rotational-programs/
+    verified: 2026-01-01
+    note: Verify on the firm's site. The programme page states the season but not the day; read on a rolling basis, so day one matters.
+
+  - firm: Uber APM
+    category: product
+    program: Associate Product Manager
+    # class_year: set by the setup step
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://www.uber.com/us/en/careers/list/?query=associate%20product%20manager
+    verified: 2026-01-01
+    note: Verify on the firm's site. Posted sporadically rather than on a schedule; no dedicated programme page was found.
+
+  - firm: Microsoft PM
+    category: product
+    program: Product Manager, university / new grad
+    # class_year: set by the setup step
+    minutes: 60
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://jobs.careers.microsoft.com/global/en/search?et=Students%20and%20graduates
+    verified: 2026-01-01
+    note: Verify on the firm's site. Team-by-team reqs, each open a minimum of a few days and then until filled; apply in the first week.
+
+  - firm: Salesforce Futureforce
+    category: product
+    program: Futureforce Associate Product Manager
+    # class_year: set by the setup step
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://www.salesforce.com/company/careers/university/associate-program-manager/
+    verified: 2026-01-01
+    note: Verify on the firm's site. Two-year rotational AI product programme; the page states when applications open.
+
+  # --- VC / growth: CHECK THE CLASS YEAR. Summer-analyst programmes often target
+  # the class AFTER a graduating senior's; the full-time analyst postings are the
+  # ones that fit. Use `status: wrong_class_year` for a programme that turns out
+  # to be the other cohort, so it stops being offered as an action.
+  - firm: Bessemer Venture Partners
+    category: vc
+    program: Analyst Program
+    # class_year: set by the setup step
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://bvp.com/analyst-program
+    verified: 2026-01-01
+    note: Verify on the firm's site. Their board is also fetched above (bvpanalyst); confirm which class year the live posting targets.
+
+  - firm: Insight Partners
+    category: vc
+    program: Investment Analyst
+    # class_year: set by the setup step
+    status: unconfirmed
+    confidence: historical-estimate
+    source: https://info.insightpartners.com/Campus-Recruiting-Programs.html
+    verified: 2026-01-01
+    note: Verify on the firm's site. Rolling with superdays; the page names the graduating classes it takes.

@@ -1,0 +1,52 @@
+-- JobOps 006 — big tasks become small ones, and a deadline says whose it is.
+--
+-- Apply with:  cd web && node lib/applymigration.mjs ../migrations/006_task_units.sql
+--
+-- TWO PROBLEMS, ONE TABLE.
+--
+-- "Pull 15 alumni names from the alumni directory" is not a task, it is a project,
+-- and it had sat untouched since the day it was written. Nothing that takes
+-- three hours ever gets started in the four minutes between classes that this
+-- tool was built around. Its children are one company each, twenty minutes, and
+-- exactly one is offered per day.
+--
+-- And a self-imposed due date looked identical to a real closing. "7 days" on
+-- the SF-86 pack and "30 days" on the Deloitte window rendered in the same
+-- chip, in the same colour scale, though missing one costs an afternoon and
+-- missing the other costs a recruiting cycle. `deadline_kind` is the difference,
+-- and Phase 2 renders it as filled versus outlined.
+--
+-- THREE DEPARTURES FROM THE BRIEF:
+--
+--   1. The table is `items`, not `tasks`.
+--
+--   2. `unit_company_id references companies(id)` — no companies table exists;
+--      `unit_company` holds the companies.yaml slug, as everything else does.
+--
+--   3. `completed_at` was asked for. Done is ALREADY recorded, in the `actions`
+--      table, keyed by item id with kind='done' — insert-only, undoable, and
+--      what listItems() already reads. A column would be a second copy of that
+--      fact, and the two would disagree the first time an undo row was written
+--      without the column being cleared. Not added; see listItems().
+
+-- +column items parent_id TEXT
+-- +column items unit_company TEXT
+-- +column items unit_kind TEXT
+-- +column items surfaced_on TEXT
+-- +column items deadline_kind TEXT
+
+-- A note on the defaults.
+--
+-- These are added with no DEFAULT clause, so existing rows get NULL, and the
+-- code reads NULL deadline_kind as 'self'. That is deliberate rather than lazy:
+-- SQLite cannot add a column with a non-constant default, and a DEFAULT 'self'
+-- would silently label every window-derived task as self-imposed — which is the
+-- exact distinction this migration exists to draw. The backfill below sets the
+-- external ones explicitly, and anything it does not touch is genuinely self.
+--
+-- The backfill itself is NOT here. It needs the companies ranking and the live
+-- window list, neither of which is available to a SQL file; it lives in
+-- web/lib/backfill_units.mjs and is idempotent.
+
+CREATE INDEX IF NOT EXISTS items_parent ON items (parent_id);
+CREATE INDEX IF NOT EXISTS items_surfaced ON items (unit_kind, surfaced_on);

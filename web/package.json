@@ -1,0 +1,23 @@
+{
+  "name": "jobops-web",
+  "private": true,
+  "scripts": {
+    "genconfig": "node lib/genconfig.mjs",
+    "genresumes": "node lib/genresumes.mjs",
+    "prebuild": "npm run genconfig && npm run genresumes",
+    "predev": "npm run genconfig && npm run genresumes",
+    "prestart": "npm run genconfig && npm run genresumes",
+    "dev": "next dev -p 3311",
+    "build": "next build",
+    "start": "next start -p 3311"
+  },
+  "dependencies": {
+    "next": "^15.5.24",
+    "pg": "^8.23.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.9.0"
+  }
+}

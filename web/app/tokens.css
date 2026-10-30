@@ -1,0 +1,107 @@
+/* JobOps colour tokens — ONE file, five meanings, nothing else.
+ *
+ * Until now the whole app was grey with a single accent (--alert, "time-critical
+ * and nothing else"). That rule was right about restraint and wrong about
+ * capacity: the most-scanned element on every page — the fit band — was five
+ * near-identical grey bars, so the eye had to READ each row to rank it.
+ *
+ * Colour is now allowed to carry information, but only these five kinds. If a
+ * colour on screen does not encode one of them, it is a bug:
+ *
+ *   1  FIT BAND        how well a role matches           green / blue / amber / grey
+ *   2  URGENCY         how long until a window shuts     red / amber / grey
+ *   3  VERIFICATION    how much to trust a date          green / amber / grey
+ *   4  CATEGORY        what kind of company              bronze / violet / teal / plum
+ *   5  PROGRESS        how much of a job is done         green fill, amber remainder
+ *
+ * WHY GREEN AND AMBER APPEAR IN THREE OF THE FIVE. They are not independent
+ * palettes and pretending otherwise would need twelve distinct hues, which is
+ * how a page ends up looking like a fruit bowl. What separates the meanings is
+ * FORM, not hue: a band is a bar plus a word, urgency is a bare right-aligned
+ * count, verification is an outlined chip, a category is a 7px dot, progress is
+ * a full-width two-segment rule. Same green, four shapes, and the shape is what
+ * tells you which question is being answered.
+ *
+ * EVERY VALUE PASSES WCAG AA (>= 4.5:1) AS TEXT on --paper #edeff2, measured
+ * rather than eyeballed — see test_palette.mjs, which recomputes the ratios and
+ * fails if a token is edited to something unreadable. The -fill variants are the
+ * brighter mid-tones used for BARS ONLY, where the requirement is 3:1 graphical
+ * contrast and a -800 tone reads as black.
+ *
+ * DELIBERATELY NOT HERE: gradients, shadows, a dark theme, and any colour on an
+ * element that is merely decorative. --alert survives unchanged because a lot of
+ * existing CSS still means "time-critical" by it; --u-now is the same idea with
+ * a name that says which of the five it belongs to.
+ *
+ * Imported by globals.css. The tokens live here; the RULES that consume them
+ * live in globals.css, because test_classes.mjs reads that one file to decide
+ * whether a className has any styling behind it.
+ */
+
+:root {
+  /* --- 1. fit band ----------------------------------------------------- */
+  /* Text tone (AA on paper) and the brighter bar tone, per band. */
+  --band-excellent:       #166534;   /* 6.19:1 */
+  --band-excellent-fill:  #15803d;
+  --band-strong:          #1d4ed8;   /* 5.82:1 */
+  --band-strong-fill:     #2563eb;
+  --band-good:            #854d0e;   /* 5.95:1 */
+  --band-good-fill:       #a16207;
+  --band-fair:            #5c6672;   /* = --graphite, 5.07:1 */
+  --band-fair-fill:       #b9c1cb;   /* = --bar */
+  --band-weak:            #5c6672;
+  --band-weak-fill:       #b9c1cb;
+
+  /* --- 2. deadline urgency --------------------------------------------- */
+  /* <=7 days, 8-30 days, 31+ days. Three levels, not one orange. */
+  --u-now:    #b91c1c;   /* 5.62:1 */
+  --u-soon:   #854d0e;   /* 5.95:1 */
+  --u-later:  #5c6672;   /* 5.07:1 */
+
+  /* --- 3. verification ------------------------------------------------- */
+  /* Read off the firm's own site / a real publish date, vs a prompt to check. */
+  --v-strong: #166534;
+  --v-weak:   #854d0e;
+  --v-none:   #5c6672;
+
+  /* --- 4. company category --------------------------------------------- */
+  /* Four muted hues, chosen to be distinct from each other AND from the three
+   * status palettes above, so a dot is never mistaken for a judgement. */
+  --cat-defense:    #8c5a2b;   /* bronze  5.05:1 */
+  --cat-product:    #5b4bc4;   /* violet  5.61:1 */
+  --cat-consulting: #0e6b78;   /* teal    5.37:1 */
+  --cat-vc:         #9d2f66;   /* plum    6.01:1 */
+
+  /* --- 5. progress ------------------------------------------------------ */
+  /* Done is green on a neutral track. TWO TOKENS, not three.
+   *
+   * There was a third, --p-todo, an amber fill for the not-yet half. It made an
+   * empty bar a solid amber block — "0 of 5 messages" reading as a full alert —
+   * and it spent the urgency amber, which means "closes in 8-30 days" on every
+   * other surface, on a second unrelated meaning. Deleted rather than retuned:
+   * the remainder is the absence of the fill, and absence has no colour.
+   *
+   * --p-done is the -800 green (= --band-excellent) rather than the brighter
+   * -700 used for band bars. It is now read against the TRACK, where it clears
+   * 6:1 with room to spare, but it stays at -800 because it is also the fill
+   * behind Sf86's coverage spans, which do sit edge to edge. */
+  --p-done:   #166534;
+  --p-track:  #dfe3e8;   /* = --bar-bg. The unfilled remainder of every meter. */
+}
+
+/* --- chip tints ---------------------------------------------------------
+ *
+ * The tinted GROUNDS the three chip variants sit on. The foreground tones are
+ * the five above and are not redefined here — a chip must not be able to drift
+ * away from the meaning its colour already carries elsewhere on the page.
+ *
+ * Each tint is the same hue at roughly 92% lightness, chosen so the AA-checked
+ * text tone above stays AA on it: the ratios below are measured against the
+ * tint, not against --paper, because that is what the text actually sits on.
+ */
+:root {
+  --u-now-tint:   #fbe9e9;   /* --u-now on this: 5.28:1 */
+  --u-soon-tint:  #f8f0dd;   /* --u-soon on this: 5.51:1 */
+  --u-later-tint: #e6e9ed;   /* --u-later on this: 4.73:1 */
+  --v-strong-tint:#e4f0e8;   /* --v-strong on this: 5.75:1 */
+}

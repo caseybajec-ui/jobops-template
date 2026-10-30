@@ -1,0 +1,151 @@
+#!/bin/sh
+# THE SLOW GATE: the build, and everything that needs a browser. ~3 minutes.
+#
+# PUSH, NOT COMMIT, and that is the whole point of the split. A local commit is
+# amendable and reaches nobody. A push is what Vercel deploys from, so the gate
+# that proves the app builds and renders belongs here, where the consequence is.
+#
+# The accepted cost: a commit can land with a broken build. It cannot reach
+# anyone until this passes.
+#
+# Skipped with:  git push --no-verify   (don't)
+# Run by hand:   .\precommit.ps1 -Full
+
+set -e
+cd "$(git rev-parse --show-toplevel)"
+HOOK="PRE-PUSH"
+DIST=.next-precommit
+. "$(dirname "$0")/lib.sh"
+
+if [ ! -d web/node_modules ]; then
+  printf 'pre-push: web/node_modules missing, skipping web checks\n'
+  exit 0
+fi
+
+# What this push actually carries. Falls back to running EVERYTHING when there
+# is no upstream yet or the range cannot be computed — an unknown range must
+# never be treated as an empty one, which is how a gate silently passes.
+if CHANGED=$(git diff --name-only @{u}..HEAD 2>/dev/null) && [ -n "$CHANGED" ]; then
+  set_docs_only
+else
+  CHANGED=""
+fi
+if [ "$docs_only" = yes ]; then
+  printf 'pre-push: this push is all .md/.txt — SKIPPING the build and browser stages.\n'
+  printf '          Nothing that renders changed. Run .\\precommit.ps1 -Full to force them.\n'
+  exit 0
+fi
+
+# A RED GATE THAT IS NOT A REAL FAILURE TEACHES YOU TO IGNORE RED GATES.
+#
+# Three transient reds in one session, none of them the code: twice
+# `EINVAL: invalid argument, readlink` on a file inside .next-precommit, and
+# once a puppeteer navigation timeout that passed 67/67 on a clean rerun. The
+# readlink one is this repository living under OneDrive — Next writes the dist
+# directory, OneDrive reparses files underneath it, and an incremental build
+# then reads a half-synced manifest. A `UNKNOWN: unknown error, write` on the
+# same directory is the same family.
+#
+# So the build directory is WIPED first. It costs a full rebuild every push and
+# removes that failure class entirely, which is the right trade: the whole point
+# of this gate is that a red means something.
+rm -rf web/$DIST
+
+# `npm run build`, not `npx next build`: the build must go through the prebuild
+# hook that regenerates lib/config.generated.js and lib/resumes.generated.js, or
+# the thing being verified is not the thing that ships.
+printf 'pre-push: next build... '
+out=$(cd web && NEXT_DIST_DIR=$DIST npm run build 2>&1) \
+  || fail_checked "next build" "$out"
+printf 'ok\n'
+
+# Whether a page scrolls sideways is a layout question, so this one needs a
+# browser: it starts the build above on an ephemeral port and loads every page
+# at 1280px. ~100s, and it aborts rather than skipping if Chrome is missing.
+#
+# IT IS THE SLOWEST STAGE AND IT STAYS WHOLE. It is the only thing catching a
+# whole class of layout bug — the 331-character location string that put a
+# scrollbar on the page, and the note that overlapped the pay column. Trimming a
+# guard for speed is how guards stop guarding.
+printf 'pre-push: 1280px overflow... '
+browser_test test_overflow.mjs || fail_checked "web/test_overflow.mjs" "$out"
+printf 'ok\n'
+
+# /resumes boots the built app and asserts both PDFs come back as real PDF
+# bytes, that both embeds point at them, and — the one worth having — that the
+# "goes to" notes are read from lib/variant.js rather than restated in the page.
+printf 'pre-push: /resumes... '
+browser_test test_resumes.mjs || fail_checked "web/test_resumes.mjs" "$out"
+printf 'ok\n'
+
+# THE SAME SWEEP AT 390px, because that is the width the owner reads it at.
+# The 1280px stage above catches a scrollbar on a laptop and says nothing
+# about a phone.
+#
+# IT FAILS ONLY ON OVERFLOW AND A TOO-WIDE TABLE. Tap targets and font
+# sizes are counted and printed but do not fail: they are a design choice
+# across every page -- 197 links under 40px on Companies alone -- and a
+# gate that is red the day it is written is one that gets --no-verify'd.
+printf 'pre-push: 390px mobile... '
+browser_test test_mobile.mjs || fail_checked "web/test_mobile.mjs" "$out"
+printf 'ok\n'
+
+# Whether a control has an accessible name is a question about the RENDERED
+# tree — half of them take their title from a prop in a client component.
+printf 'pre-push: controls are named... '
+browser_test test_controls.mjs || fail_checked "web/test_controls.mjs" "$out"
+printf 'ok\n'
+
+# Every tour step's selector must match something VISIBLE. Renaming a class
+# otherwise makes the step skip silently and the tour quietly gets shorter.
+printf 'pre-push: tour targets... '
+browser_test test_tour_targets.mjs || fail_checked "web/test_tour_targets.mjs" "$out"
+printf 'ok\n'
+
+# THE RUN HISTORY APPENDS. It runs recordrun.mjs as a real process against
+# the real database twice and requires TWO rows -- a structural check for
+# the word INSERT would pass against the version that overwrote one row,
+# which is the bug it replaces. It writes and cleans up, so it sits here
+# rather than in the fast gate.
+printf 'pre-push: run history appends... '
+out=$(cd web && JOBOPS_DIRECT=1 node test_runhistory.mjs 2>&1) \
+  || fail_checked "web/test_runhistory.mjs" "$out"
+printf 'ok\n'
+
+# THE APPLY-LOG PASTE BOX, CLICKED. Two paths: a real log imports, and a paste
+# that parses to nothing renders a RED banner that is actually VISIBLE.
+#
+# The second is the reason it needs a browser. The route can return the right
+# JSON and the component can have the right branch while the banner is clipped
+# by a column width -- which is precisely what happened to the optimistic-save
+# rollback, where every test passed, the build was green, and a failed save
+# looked exactly like never having clicked.
+printf 'pre-push: apply-log paste box... '
+out=$(cd web && NEXT_DIST_DIR=$DIST JOBOPS_DIRECT=1 node test_applied_browser.mjs 2>&1) \
+  || fail_checked "web/test_applied_browser.mjs" "$out"
+printf 'ok\n'
+
+# Write paths, clicked for real. Only when already pointed at the local
+# database: it creates a fictional contact and deletes it again, and doing that
+# against Neon would put fake rows through production for no benefit.
+#
+# THESE THREE HAVE NEVER RUN ON CASEY'S MACHINE — JOBOPS_LOCAL_DB is not in his
+# .env. See CLAUDE.md for exactly what that leaves uncovered.
+if [ "$JOBOPS_LOCAL_DB" = "1" ]; then
+  printf 'pre-push: write paths... '
+  out=$(cd web && NEXT_DIST_DIR=$DIST node test_writes.mjs 2>&1) \
+    || fail_checked "web/test_writes.mjs" "$out"
+  printf 'ok\n'
+
+  printf 'pre-push: mutation audit... '
+  out=$(node audit_mutation.mjs 2>&1) \
+    || fail_checked "audit_mutation.mjs" "$out"
+  printf 'ok\n'
+
+  printf 'pre-push: wrong-cycle wiring... '
+  out=$(cd web && node test_flags.mjs 2>&1) \
+    || fail_checked "web/test_flags.mjs" "$out"
+  printf 'ok\n'
+fi
+
+printf '\nslow gate passed. Safe to deploy.\n'

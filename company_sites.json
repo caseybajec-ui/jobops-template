@@ -1,0 +1,98 @@
+{
+  "atlassian": {
+    "name": "Atlassian",
+    "site": "atlassian.com"
+  },
+  "bessemer": {
+    "name": "Bessemer",
+    "site": "bvp.com"
+  },
+  "chaosindustries": {
+    "name": "Chaos Industries",
+    "site": "chaosinc.com"
+  },
+  "databricks": {
+    "name": "Databricks",
+    "site": "databricks.com"
+  },
+  "exa": {
+    "name": "Exa",
+    "site": "exa.ai"
+  },
+  "gleanwork": {
+    "name": "Glean",
+    "site": "glean.com"
+  },
+  "hadrian": {
+    "name": "Hadrian",
+    "site": "hadrian.co"
+  },
+  "judgmentlabs": {
+    "name": "Judgment Labs",
+    "site": "judgmentlabs.ai"
+  },
+  "raindrop": {
+    "name": "Raindrop",
+    "site": "raindrop.ai"
+  },
+  "ramp": {
+    "name": "Ramp",
+    "site": "ramp.com"
+  },
+  "scaleai": {
+    "name": "Scale AI",
+    "site": "scale.com"
+  },
+  "stripe": {
+    "name": "Stripe",
+    "site": "stripe.com"
+  },
+  "trueanomaly": {
+    "name": "True Anomaly",
+    "site": "trueanomaly.space"
+  },
+  "vannevarlabs": {
+    "name": "Vannevar Labs",
+    "site": "vannevarlabs.com"
+  },
+  "vanta": {
+    "name": "Vanta",
+    "site": "vanta.com"
+  },
+  "brex": {
+    "name": "Brex",
+    "site": "brex.com"
+  },
+  "clickhouse": {
+    "name": "ClickHouse",
+    "site": "clickhouse.com"
+  },
+  "samsara": {
+    "name": "Samsara",
+    "site": "samsara.com"
+  },
+  "google": {
+    "name": "Google",
+    "site": "route-via-school"
+  },
+  "meta": {
+    "name": "Meta",
+    "site": "route-via-school"
+  },
+  "salesforce": {
+    "name": "Salesforce",
+    "site": "route-via-school"
+  },
+  "uber": {
+    "name": "Uber",
+    "site": "route-via-school"
+  },
+  "forterra": {
+    "name": "Forterra",
+    "site": "unresolved"
+  },
+  "sphinx": {
+    "name": "Sphinx",
+    "site": "unresolved"
+  }
+}

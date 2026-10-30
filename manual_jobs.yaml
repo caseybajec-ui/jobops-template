@@ -1,0 +1,71 @@
+# Roles the owner tracks by hand, because the company does not publish to any
+# board this tool can poll.
+#
+# WHY A FILE AND NOT A ONE-OFF INSERT. A row typed straight into the database
+# exists in exactly one place, cannot be reviewed in a diff, and is gone the day
+# the database is rebuilt. These are version-controlled, re-applied by
+# `python fetch_jobs.py manual`, and idempotent — running it twice changes
+# nothing, so the daily job can carry it.
+#
+# EVERY ROW HERE IS source: manual, AND THAT MATTERS. gate_verdict() returns no
+# verdict at all for a manual row: the deterministic gates exist to stop the
+# owner reading ten thousand board postings, and they hold no information the
+# owner lacks about a role they typed in themselves. Their only possible effect
+# here would be to delete something the owner asked for. test_manual_gate.py
+# pins that, in both directions.
+#
+# `note` becomes the row's DESCRIPTION, so the scorer reads it. A manual entry
+# with an empty description scores blind, which is worse than not adding it.
+#
+# NO DATES IN A NOTE UNLESS YOU READ THEM OFF THE COMPANY'S OWN PAGE, and say
+# so with the date you read it. A confident wrong window is the most expensive
+# mistake this system can make. If you have not verified a window, write
+# "WINDOW UNVERIFIED" and nothing else about timing.
+#
+# The list ships EMPTY. `python fetch_jobs.py manual` exits 1 and says so, by
+# design: "applied 0 manual jobs" would read like success. Uncomment and edit
+# the example below to add your first entry.
+
+jobs: []
+
+# ---------------------------------------------------------------- example
+# Every field, with what it is for. Copy the block, drop the leading `# `,
+# and put it under `jobs:` in place of the `[]`.
+#
+#   - key: manual:acme:apm-2027
+#       # REQUIRED. Unique, stable, and prefixed `manual:`. The part after the
+#       # last colon becomes the row's board id. Changing the key creates a
+#       # second row; it does not rename the first.
+#     company: acme
+#       # REQUIRED. The company slug, lowercase. If the company also has a
+#       # board entry in companies.yaml, use the SAME slug so the role lands
+#       # on that company's page.
+#     display_name: Acme Corp
+#       # Optional. What the app prints. Defaults to `company`.
+#     title: Associate Product Manager (2027 cohort)
+#       # REQUIRED. The posting's title as written.
+#     location: San Francisco, CA; New York, NY
+#       # Optional. One string, SEMICOLON-separated for a multi-city posting,
+#       # exactly as the board fetchers write it — splitLocations() in the web
+#       # app splits on the semicolon and nothing else, so this renders as two
+#       # cities rather than one long line. A comma is NOT a separator:
+#       # "Costa Mesa, California" is one place.
+#     url: https://www.acme.example/careers/apm
+#       # Optional but strongly recommended. The posting or programme page.
+#       # Editable later from the role's row in the web UI.
+#     category: product
+#       # Optional. One of defense / product / consulting / vc — genconfig
+#       # refuses a fifth, because a fifth category means a fifth colour and
+#       # the palette has four. It picks the resume variant (variant.js:
+#       # defense/product -> tech, consulting/vc -> finance). OMIT it if none
+#       # of the four fits; the row then shows no resume tag rather than a
+#       # guessed one, which is the honest rendering.
+#     tier: 1
+#       # Optional. Defaults to 1.
+#     posted_at: 2026-09-15
+#       # Optional. Only if the posting states it; leave it out otherwise.
+#     note: >-
+#       Two-year rotational programme, three rotations, starts with a product
+#       bootcamp. WINDOW UNVERIFIED — the programme page states a season and
+#       no day. Becomes the row's description, so write what the scorer needs:
+#       what the role is, who it is for, what it requires.

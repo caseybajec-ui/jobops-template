@@ -1,0 +1,37 @@
+# Prove the three Google secrets work, on demand. Reads only, sends nothing.
+#
+# workflow_dispatch ONLY. No schedule, no push trigger: this exists to be run
+# by a human after granting access, and again whenever a token stops working.
+# A verification that runs on its own is one nobody reads the output of.
+name: Check Google auth
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install requests
+
+      - name: Read the profile and free/busy
+        env:
+          # EVERY SECRET IS MAPPED HERE, EXPLICITLY. A secret existing in the
+          # repository is not an environment variable on the runner -- Actions
+          # exposes only what a step maps, and that exact mistake left
+          # NEON_API_KEY invisible to the digest for weeks while the secret sat
+          # in settings looking correct.
+          JOBOPS_GOOGLE_CLIENT_ID: ${{ secrets.JOBOPS_GOOGLE_CLIENT_ID }}
+          JOBOPS_GOOGLE_CLIENT_SECRET: ${{ secrets.JOBOPS_GOOGLE_CLIENT_SECRET }}
+          JOBOPS_GOOGLE_REFRESH_TOKEN: ${{ secrets.JOBOPS_GOOGLE_REFRESH_TOKEN }}
+          PYTHONIOENCODING: utf-8
+        run: python google_check.py

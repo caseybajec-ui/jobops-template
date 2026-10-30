@@ -1,0 +1,2896 @@
+/* JobOps — a daily briefing for one person's job search.
+ *
+ * Cool instrument paper, ink-dark text, and colour that CARRIES INFORMATION.
+ *
+ * This header used to read "ONE accent reserved for time-critical items. Colour
+ * means urgency and nothing else", and that was the right instinct applied one
+ * notch too hard: the fit band — the most-scanned element in the whole app —
+ * was five near-identical grey bars, so ranking a list meant READING every row.
+ * Restraint that costs you the primary signal is not restraint.
+ *
+ * Colour now encodes exactly five things and nothing else. The five, their
+ * values, and why green and amber legitimately appear in three of them, are all
+ * documented in tokens.css, which is imported immediately below and is the only
+ * place a colour is defined. If something on screen is coloured and does not
+ * encode one of those five, it is a bug.
+ *
+ * --alert survives because a good deal of CSS in this file still means
+ * "time-critical" by it. New work should use --u-now instead, which is the same
+ * idea named after which of the five it belongs to.
+ *
+ * Deliberately not: near-black with a bright accent (what this was), cream with a
+ * serif and terracotta, broadsheet hairlines at zero radius, gradients, shadows,
+ * or a dark theme.
+ */
+
+@import "./tokens.css";
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Roboto+Mono:wght@400;500&display=swap");
+
+:root {
+  --paper:    #edeff2;  /* page ground — cool grey, not white, not cream */
+  --card:     #f7f8fa;  /* raised surfaces */
+  --ink:      #14181f;  /* primary text; near-black as TEXT, never as ground */
+  --graphite: #5c6672;  /* secondary text, labels, metadata */
+  --rule:     #cbd2da;  /* rules and dividers — structural, never decorative */
+  /* THE ONLY ACCENT. Time-critical only.
+   *
+   * #c2410c measured 4.4996:1 on paper — it read as 4.50 and was below AA. A
+   * ratio that rounds to the threshold is not at the threshold; one step darker
+   * clears it with room, and nothing on screen changes perceptibly. */
+  --alert:    #b93d0b;
+
+  --bar:      #b9c1cb;  /* score bars — grey, length only, never a colour ramp */
+  --bar-bg:   #dfe3e8;
+
+  --display: "Fraunces", Georgia, serif;
+  --body:    "Public Sans", system-ui, sans-serif;
+  --data:    "Roboto Mono", ui-monospace, monospace;
+
+  --col:  1100px;  /* reading column — Daily is a document */
+  --wide: 1360px;  /* tables may go wider, and stop here */
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* UNDERLINE ON HOVER AND FOCUS ONLY.
+ *
+ * Every company name, every role title, every "see all" was underlined, which
+ * on a page that is mostly proper nouns is texture rather than emphasis — and
+ * texture everywhere made the two or three links that actually matter
+ * invisible. Colour and weight carry linkness at rest; the underline appears
+ * when you are pointing at it, which is when it answers a question.
+ *
+ * Focus keeps it unconditionally: a keyboard user has no pointer to hover
+ * with, and :focus-visible already draws an outline, so this is belt and
+ * braces rather than the only signal. */
+a { color: var(--ink); text-decoration: none; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+a:hover, a:focus-visible { text-decoration: underline; text-decoration-thickness: 2px; }
+/* Prose is the exception. Inside a paragraph there is no other cue that a run
+   of words is a link, so those keep the underline at rest. */
+.sub a, .note a, .railnote a, .todaywhy a, .nothing a, .meter-label a,
+.qhow a, .whyhere a { text-decoration: underline; }
+
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+button, select, input {
+  font: inherit;
+  font-family: var(--body);
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 3px 7px;
+}
+button { cursor: pointer; }
+button:hover { background: #e7eaee; }
+
+.mono { font-family: var(--data); font-variant-numeric: tabular-nums; }
+.dim { color: var(--graphite); }
+.faint { color: var(--graphite); opacity: .8; }
+.alert { color: var(--alert); }
+
+/* ---------------------------------------------------------------- masthead */
+
+.topbar {
+  display: flex;
+  align-items: baseline;
+  gap: 22px;
+  max-width: var(--wide);
+  margin: 0 auto;
+  padding: 14px 28px 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.brand {
+  font-family: var(--display);
+  font-variation-settings: "opsz" 24;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -.01em;
+}
+.nav { display: flex; gap: 18px; }
+.nav a {
+  color: var(--graphite);
+  text-decoration: none;
+  font-size: 14px;
+  padding-bottom: 2px;
+  border-bottom: 2px solid transparent;
+}
+.nav a.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
+.nav a:hover { color: var(--ink); }
+.nav .cnt { font-family: var(--data); font-size: 12px; }
+.nav .cnt.urgent { color: var(--alert); }
+.spacer { flex: 1; }
+.cost-meter { font-family: var(--data); font-size: 12px; color: var(--graphite); }
+.cost-meter.over { color: var(--alert); }
+
+/* ------------------------------------------------------------------- daily */
+
+.brief { max-width: var(--col); margin: 0 auto; padding: 44px 28px 90px; }
+
+.dateline { margin-bottom: 26px; }
+.dateline .weekday {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--graphite);
+  display: block;
+  margin-bottom: 5px;
+}
+.dateline .date {
+  font-family: var(--display);
+  /* Disciplined, not a blog header: floors at 34px, tops out at 56px. */
+  font-size: clamp(34px, 4.6vw, 56px);
+  font-variation-settings: "opsz" 96;
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -.02em;
+  margin: 0;
+}
+.dateline hr { border: 0; border-top: 1px solid var(--ink); margin: 16px 0 12px; }
+.status { font-size: 17px; margin: 0; max-width: 64ch; }
+.status .sep { color: var(--rule); padding: 0 7px; }
+
+/* Where this sits in the cycle. Metadata weight on purpose: it is the frame the
+ * instruction below is read against, never the instruction itself. */
+.frame {
+  font-family: var(--data);
+  font-size: 12.5px;
+  color: var(--graphite);
+  margin: 0 0 6px;
+  max-width: 78ch;
+}
+/* Each fact wraps as a UNIT. Without this the line broke between "16" and
+   "have no date at all", which turns a fact into two half-sentences. */
+.frame .framebit { display: inline-block; white-space: nowrap; }
+.frame .sep { color: var(--rule); padding: 0 6px; }
+
+/* ----------------------------------------------------------------- today
+ *
+ * The only element on the page phrased as an instruction, and the only one
+ * allowed to outweigh the date. A left rule in ink rather than a box: the design
+ * has no cards, and a border on four sides would read as a notification.
+ */
+.today {
+  margin-top: 30px;
+  padding: 2px 0 2px 18px;
+  border-left: 3px solid var(--ink);
+}
+.today.quiet { border-left-color: var(--rule); }
+.todaylabel {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--graphite);
+  margin: 0 0 8px;
+}
+.todaytitle {
+  font-family: var(--display);
+  font-size: clamp(21px, 2.2vw, 27px);
+  font-weight: 600;
+  line-height: 1.22;
+  letter-spacing: -.01em;
+  margin: 0 0 8px;
+  max-width: 42ch;
+}
+.today.quiet .todaytitle { font-weight: 500; color: var(--graphite); }
+/* The honest time cost, stated next to the instruction rather than discovered
+ * after starting. Never accented: how long a thing takes is not an alarm. */
+.todaytime {
+  font-family: var(--data);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--graphite);
+  letter-spacing: 0;
+  white-space: nowrap;
+  margin-left: 12px;
+}
+.todaywhy { font-size: 15px; margin: 0; max-width: 62ch; }
+.todaydetail { font-size: 13px; color: var(--graphite); margin: 5px 0 0; max-width: 62ch; }
+/* "Checked it" — the answer to tier 2. Sits under the instruction because it IS
+   the instruction's completion, not a separate feature. */
+.todaycheck {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  margin: 12px 0 0;
+}
+.todaycheck input[type="date"] { font: inherit; font-family: var(--data); }
+/* The batch escape hatch from the daily prompt. */
+.todaybatch { font-size: 12.5px; color: var(--graphite); margin: 10px 0 0; max-width: 62ch; }
+
+/* Confirm dates — the same control as the card, sixteen times. */
+.confirmlist { list-style: none; margin: 0; padding: 0; }
+/* FOUR columns now. The fourth holds the collapsed "answer anyway" link, which
+   is what keeps a not-due window to ONE line: the control used to render open on
+   every row, spanning the full width beneath it, so sixteen windows cost
+   thirty-two lines and none looked more next than any other. */
+.confirmlist > li {
+  display: grid;
+  grid-template-columns: 190px 1fr 96px 108px;
+  gap: 6px 18px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+}
+/* A window that is not today's reads as not today's. Grey, and quiet — but
+   still answerable, because clearing six on a Sunday is a real thing to want. */
+.confirmlist > li.cwaiting .cfirm { font-weight: 400; color: var(--graphite); }
+.confirmlist > li.cwaiting .cfirm a { color: inherit; }
+.confirmlist > li.cdue { background: var(--card); }
+.confirmlist > li.cdue .cfirm { font-weight: 600; color: var(--ink); }
+.confirmlist > li:last-child { border-bottom: 0; }
+/* min-width: 0 so the 1fr track can shrink. Without it the longest programme
+   line — the defense primes one, which names five companies — sets the column's
+   minimum and pushed the page 15px past 1280. Caught by test_overflow.mjs, which
+   is the whole reason it is in the pre-commit gate. */
+.confirmlist > li > * { min-width: 0; }
+.confirmlist .cfirm { font-weight: 600; overflow-wrap: anywhere; }
+.confirmlist .cprog { overflow-wrap: anywhere; }
+.confirmlist .cprog { font-size: 13.5px; color: var(--graphite); }
+/* Wraps. "checked 4d ago — not due yet" wants 193px and the column is 150, and
+   with nowrap that pushed the whole page 15px past 1280 — the same
+   grid-track-cannot-shrink shape as the location label, one page over. */
+.confirmlist .cwhen {
+  font-family: var(--data); font-size: 11.5px; color: var(--graphite);
+  text-align: right; line-height: 1.35;
+  white-space: nowrap;
+}
+.confirmlist .todaycheck { grid-column: 1 / -1; margin: 2px 0 0; }
+/* The collapsed form stays ON the row, in its own column, so the row is one
+   line. Opening it is what pushes the full control onto a second.
+   
+   QUIET UNTIL YOU GO LOOKING. Printed on all fifteen not-due rows it became the
+   loudest thing in the section — fifteen identical blue links down the right
+   edge, out-shouting the one window that actually is due. It is an escape
+   hatch, not a label, so it behaves like the other escape hatches here: absent
+   at rest, present on hover or keyboard focus, and always visible below 720px
+   where there is no hover to discover it with. Same shape as .nodatehint. */
+.confirmlist .todaycheck.quiet { grid-column: 4; margin: 0; text-align: right; }
+.confirmlist .todaycheck.quiet .linkish { opacity: 0; transition: opacity .12s; }
+.confirmlist > li:hover .todaycheck.quiet .linkish,
+.confirmlist .todaycheck.quiet .linkish:focus-visible { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .confirmlist .todaycheck.quiet .linkish { transition: none; }
+}
+@media (max-width: 720px) {
+  .confirmlist .todaycheck.quiet .linkish { opacity: 1; }
+}
+@media (max-width: 900px) {
+  .confirmlist > li { grid-template-columns: 1fr; }
+  .confirmlist .cwhen { text-align: left; }
+  .confirmlist .todaycheck.quiet { grid-column: 1; text-align: left; }
+}
+
+.todaydone { margin: 12px 0 0; }
+.todaydone button { font-size: 13px; }
+
+.todayshort {
+  font-size: 13.5px;
+  color: var(--graphite);
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+  max-width: 62ch;
+}
+
+/* A standing caveat, not a deadline. Graphite with a rule, never --alert: the
+ * accent means "time-critical", and "we don't know the date" is the opposite of
+ * a countdown. */
+.warn {
+  font-size: 13px;
+  color: var(--graphite);
+  border-left: 2px solid var(--rule);
+  padding-left: 12px;
+  margin: 16px 0 0;
+  max-width: 74ch;
+}
+.warn strong { color: var(--ink); }
+
+/* How long an item has been sitting. Counts UP, and stays graphite: age is a
+   fact about the past, not an alarm about the future, and the accent is spent
+   only on things that are actually running out. */
+.itemage {
+  display: block;
+  font-family: var(--data);
+  font-size: 11.5px;
+  color: var(--graphite);
+  margin-top: 3px;
+}
+
+/* The three answers. Small, inline, and only on an overdue row — a control that
+   is always there is chrome, and one you cannot answer in a click is a nag. */
+.ask {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 7px;
+  font-size: 12.5px;
+}
+.ask button {
+  font-size: 12px;
+  padding: 2px 9px;
+}
+
+/* The hide reason. Appears in place, on its own line, and never as a modal — the
+   answer takes one click and a dialog would cost three. */
+/* Says where the missing item went. Without it the count silently drops by one
+   and the list looks like it lost something. */
+.promoted {
+  font-size: 12.5px;
+  color: var(--graphite);
+  margin: 10px 0 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--rule);
+  max-width: 74ch;
+}
+
+.hidewhy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.hidewhy button { font-size: 11.5px; padding: 2px 8px; white-space: nowrap; }
+/* Companies: the count next to the fit band. "Excellent 54" read as a score of
+   54 at a glance — the band is a judgement and the count is metadata, so they
+   must not share a weight or sit flush against each other. */
+.crow .count40 {
+  font-family: var(--data);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--graphite);
+  border-left: 1px solid var(--rule);
+  padding-left: 12px;
+}
+
+/* Start here — the networking queue. One verb per row, the detail on demand. */
+.queue { border-bottom: 1px solid var(--rule); padding: 9px 0; }
+.queue:last-of-type { border-bottom: 0; }
+.queue > summary {
+  display: grid;
+  grid-template-columns: 190px 110px 1fr;
+  gap: 18px;
+  align-items: baseline;
+  cursor: pointer;
+  list-style: none;
+}
+.queue > summary::-webkit-details-marker { display: none; }
+.queue .qco { font-weight: 600; }
+.queue .qwhat { font-size: 13.5px; text-decoration: underline; text-underline-offset: 2px; }
+.queue .qwhy { font-size: 13px; color: var(--graphite); }
+.queue .qbody { padding: 10px 0 4px 208px; max-width: 82ch; }
+.queue .qbody p { margin: 0 0 7px; font-size: 13.5px; }
+.queue .qnote { color: var(--ink); }
+.queue .qtitles, .queue .qask, .queue .qhow { color: var(--graphite); }
+.queue .qhow code { font-family: var(--data); font-size: 12px; }
+@media (max-width: 900px) {
+  .queue > summary { grid-template-columns: 1fr; gap: 3px; }
+  .queue .qbody { padding-left: 0; }
+}
+
+/* The two alumni links on a company row: a people search, and the school's
+   own page labelled unfiltered. Underlined like every other verb on the row. */
+.alumnilinks a { text-decoration: underline; text-underline-offset: 2px; }
+
+/* The one-action add on Companies. The boxes wrap as a unit and the note
+   or error takes a full line under them — never a span squeezed beside the
+   button, which is how a failed save came to look like an unclicked one. */
+.quickadd { display: inline-flex; flex-direction: column; gap: 4px; vertical-align: top; }
+.quickadd-row { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.quickadd-row input { width: 240px; max-width: 100%; }
+.quickadd-note { font-size: 12.5px; }
+.quickadd .linkish, button.quickadd-open {
+  background: none; border: 0; padding: 0;
+  color: var(--graphite); text-decoration: underline; text-underline-offset: 2px;
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+
+.hidewhy button.linkish {
+  background: none; border: 0; padding: 2px 4px;
+  color: var(--graphite); text-decoration: underline;
+}
+
+.section { margin-top: 42px; }
+.section > h2 {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--graphite);
+  margin: 0 0 14px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--rule);
+}
+.section > h2 .h2note { letter-spacing: .02em; text-transform: none; font-weight: 400; opacity: .85; }
+
+/* Hanging numerals. The ordinal sits OUTSIDE the text column — the eye reads
+ * the order before the words. Below 720px the gutter would eat the text, so it
+ * moves inline rather than collapsing to nothing. */
+.items { list-style: none; margin: 0; padding: 0; }
+.item {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr auto;
+  column-gap: 18px;
+  align-items: baseline;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.item:last-child { border-bottom: 0; }
+.item .ord {
+  font-family: var(--data);
+  font-size: 13px;
+  color: var(--graphite);
+  text-align: right;
+  padding-right: 2px;
+}
+.item .what { font-size: 16px; font-weight: 500; }
+.item .why {
+  grid-column: 2;
+  font-size: 14px;
+  color: var(--graphite);
+  margin-top: 3px;
+  max-width: 70ch;
+}
+.item .when {
+  font-family: var(--data);
+  font-size: 12.5px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--graphite);
+  white-space: nowrap;
+}
+.item .when.urgent { color: var(--alert); font-weight: 500; }
+.item details { grid-column: 2; margin-top: 5px; }
+.item summary { font-size: 13px; color: var(--graphite); cursor: pointer; }
+.item summary:hover { color: var(--ink); }
+.item details p { font-size: 13.5px; color: var(--graphite); margin: 6px 0 0; max-width: 74ch; }
+
+/* Fit — a word and a bar, never a two-digit number.
+ *
+ * The scorer produces about twelve distinct values and repeats itself within
+ * +/-10 points between runs, so "72" claims a precision that is not there and
+ * invites reading a 4-point gap as a difference. The word carries the meaning;
+ * the bar's LENGTH carries the magnitude; the number lives in the expanded row.
+ * Still no colour ramp — colour is for time-critical things only. */
+.scorebar { display: inline-grid; grid-template-columns: 44px auto; align-items: center; gap: 8px; }
+.scorebar .track { height: 6px; background: var(--bar-bg); border-radius: 1px; overflow: hidden; }
+.scorebar .fill { height: 100%; background: var(--bar); display: block; }
+.scorebar .num { font-family: var(--data); font-size: 13px; font-variant-numeric: tabular-nums; }
+.scorebar .band { font-size: 12.5px; color: var(--graphite); white-space: nowrap; }
+.scorebar .band.top { color: var(--ink); font-weight: 500; }
+
+/* The leftmost column was the fit band: five grey lengths on rows that are all
+   already 40+ and curated, so it carried no information at the most valuable
+   spot on the row. It now carries the one distinction that changes what the
+   owner does — a class-year programme, or a req that will be filled before
+   they graduate. */
+.role {
+  display: grid;
+  /* Band, then the class-year/open-now distinction, then the role, then the actions.
+     The band came back because it stopped being grey; see the note in Daily.js. */
+  grid-template-columns: 100px 74px 1fr auto;
+  column-gap: 18px;
+  align-items: baseline;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.role:last-child { border-bottom: 0; }
+.role .who { font-size: 15px; }
+.when2027 {
+  font-family: var(--data);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--graphite);
+  white-space: nowrap;
+}
+/* A class-year programme is a real target. Everything else is intelligence about who
+   hires this profile, and saying so plainly is more useful than a bar. */
+.when2027.program { color: var(--ink); font-weight: 600; }
+
+/* Weight by ROLE, not by company. Tier does not discriminate (21 of 22 are tier
+   1) and company depth discriminates on the wrong thing — it rendered a
+   class-year new-grad programme at a one-role company as secondary while an open-now req at
+   a fifty-role company read as primary. Depth is hiring volume; this row is
+   asking whether the role is worth a Tuesday. */
+.role.primary .who .co { font-weight: 600; color: var(--ink); }
+.role.secondary .who .co { font-weight: 400; color: var(--graphite); }
+.role .who .co { font-weight: 600; }
+.role .who .sep { color: var(--rule); padding: 0 6px; }
+/* The location follows the title link with no whitespace between the elements,
+   so it read as "EngineerAtlanta, Georgia". Invisible while the label was a
+   331-character string running off the page; obvious once it was short. */
+.role .who .loc { margin-left: 8px; }
+.role .pay { font-family: var(--data); font-size: 13px; white-space: nowrap; }
+.role .pay.unknown { font-family: var(--body); font-size: 12.5px; color: var(--graphite); }
+.row .num, .row .lvl { white-space: nowrap; }
+
+.nothing { color: var(--graphite); margin: 2px 0; }
+.note {
+  font-size: 13px;
+  color: var(--graphite);
+  border-left: 2px solid var(--rule);
+  padding-left: 12px;
+  margin: 16px 0 0;
+  max-width: 74ch;
+}
+/* The submissions counter, first thing on Daily. Quiet type, because it is a
+   frame for reading the page rather than a thing to do -- but never hidden:
+   `counter-none` is the state where nothing has ever been submitted, and it is
+   dimmed rather than absent, because a line that disappears when the number is
+   zero is a line that never tells you the number is zero. */
+.counter {
+  font-family: var(--data);
+  font-size: 12px;
+  color: var(--ink);
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border-left: 2px solid var(--rule);
+  background: var(--bar-bg);
+}
+.counter-none { color: var(--graphite); }
+
+/* One drafted field inside an apply pack: a heading row and the text itself.
+   Reuses .phead's grid so it lines up with every other row in the app. */
+.pfield { margin: 10px 0 14px; }
+.ptext {
+  width: 100%;
+  font-family: var(--data);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+/* SCREEN-OUT TAGS on a role row.
+   Hard blockers read as warnings; the two that are NOT blockers for the owner --
+   an obtainable clearance, US-citizens-only -- render in the same green as a
+   passing state, because a defense row saying "this is fine" out loud is the
+   whole reason they are tagged at all. `chip-unknown` is neither: its posting
+   was truncated before the requirements section, and it must not look clear. */
+.chips { margin: 4px 0 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-family: var(--data);
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--rule);
+  white-space: nowrap;
+}
+/* EXISTING TOKENS, not invented ones. The first version used --warn-ink and
+   --ok-ink, which nothing defines -- and `var()` of an undefined token drops
+   the property SILENTLY, so both chips would have rendered in the body colour
+   with nothing erroring. test_palette.mjs caught it.
+   --u-now is the red already used for a window closing now; --v-strong is the
+   green already used for a strong signal. Both are contrast-checked. */
+.chip-hard { color: var(--u-now); border-color: currentColor; }
+.chip-ok { color: var(--v-strong); border-color: currentColor; }
+.chip-unknown { color: var(--graphite); border-style: dashed; }
+
+/* The reason a company was pinned into the outreach queue by hand.
+   Tighter than a page-level .note because it sits INSIDE a row, under the
+   company it explains, rather than at the foot of the page. */
+.pinwhy {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  max-width: 78ch;
+}
+
+.tag-open {
+  font-family: var(--data);
+  font-size: 11px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 0 4px;
+  margin-left: 7px;
+  vertical-align: 1px;
+}
+
+/* ------------------------------------------------------------------ tables */
+
+.sheet { max-width: var(--wide); margin: 0 auto; padding: 0 28px 80px; }
+.controls {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 16px 0 12px; font-size: 13.5px; color: var(--graphite);
+}
+.controls label { display: flex; align-items: center; gap: 6px; }
+
+.row, .crow, .drow, .frow, .prow, .krow, .srow {
+  display: grid; align-items: baseline; column-gap: 16px;
+  padding: 7px 0; border-bottom: 1px solid var(--rule);
+}
+.row { cursor: pointer; }
+/* Firm · Program · Closes · Days left · Confidence · Note */
+.drow { grid-template-columns: 136px 1fr 104px 84px 132px 1.1fr; }
+/* Company · Earliest class-year posting · Roles · Evidence */
+.frow { grid-template-columns: 190px 200px 66px 1fr; }
+.row:hover, .crow:hover, .drow:hover, .frow:hover,
+.prow:hover, .krow:hover, .srow:hover { background: var(--card); }
+.row.head, .crow.head, .drow.head, .frow.head, .prow.head, .krow.head, .srow.head {
+  font-size: 11px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--graphite); cursor: default; border-bottom: 1px solid var(--ink);
+}
+.row.head:hover, .crow.head:hover, .drow.head:hover,
+.frow.head:hover, .prow.head:hover, .krow.head:hover,
+.srow.head:hover { background: transparent; }
+/* THE DOT AFTER A COMPANY NAME. It was a ::after on .row.stale — content:""
+   in --alert, with no tooltip, no accessible name and no legend entry. On the
+   page it read as a tier mark, or as the category dot rendered twice, and there
+   was no way to find out which: a pseudo-element cannot carry a title and a
+   screen reader gets nothing at all.
+   
+   What it actually says is that the BOARD has not touched this posting in a
+   week — an ageing signal, not an urgent one. --alert is reserved here for
+   time-critical, and a posting sitting unedited is the opposite of that, so it
+   drops to graphite and becomes a real <span> that can say what it means. */
+.agedot {
+  display: inline-block; width: 5px; height: 5px;
+  margin-left: 7px; border-radius: 50%;
+  background: var(--u-later); opacity: .8;
+  vertical-align: 1px;
+}
+
+.co { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.loc { color: var(--graphite); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* An Inbox row's location cell holds two things: the place, which truncates,
+   and the chip that says whether it is somewhere he wants, which must not.
+   Putting them in one overflow:hidden box clipped the chip off 27 of 32 rows.
+   The min-width:0 is what lets the text half actually shrink — a flex item's
+   default min-width is its content, so without it the cell refuses to narrow
+   and pushes the chip out again. */
+.row .loc { display: flex; align-items: baseline; gap: 0; min-width: 0; }
+.row .loctext { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .loc .ptag { flex: 0 0 auto; }
+.lvl { font-size: 12.5px; color: var(--graphite); }
+.lvl.program { color: var(--ink); font-weight: 500; }
+.num { font-family: var(--data); font-variant-numeric: tabular-nums; text-align: right; }
+.zero { color: var(--rule); }
+.sortbtn {
+  background: none; border: 0; padding: 0; font: inherit; color: var(--graphite);
+  text-transform: uppercase; letter-spacing: .13em; font-size: 11px; font-weight: 600;
+  cursor: pointer; text-align: right; width: 100%;
+}
+.sortbtn.on { color: var(--ink); }
+.sortbtn:hover { background: none; color: var(--ink); }
+
+.detail {
+  padding: 14px 0 20px 132px; border-bottom: 1px solid var(--rule);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px 34px; background: var(--card);
+}
+.detail h4 {
+  font-size: 11px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--graphite); margin: 0 0 5px;
+}
+.detail ul { margin: 0 0 12px; padding-left: 17px; }
+.detail li { margin-bottom: 3px; font-size: 14px; }
+.detail .full { grid-column: 1 / -1; }
+.pitch { border-left: 2px solid var(--ink); padding-left: 12px; margin: 0 0 12px; max-width: 78ch; }
+.actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.note-input { flex: 1; min-width: 220px; }
+.notes { white-space: pre-wrap; font-family: var(--data); font-size: 13px; color: var(--graphite); }
+.empty { padding: 46px 0; color: var(--graphite); }
+.count { font-family: var(--data); font-size: 12.5px; color: var(--graphite); }
+
+@media (max-width: 1280px) {
+  .detail { padding-left: 0; grid-template-columns: 1fr; }
+}
+
+.sheet-rows { width: 100%; }
+.stage-pill { font-size: 12px; color: var(--graphite); }
+
+/* Companies: the two-band layout.
+ *
+ * SEVEN COLUMNS, and the seventh is not optional. This rule overrides the
+ * .crow above and it was written with six — so the ⋯ menu, the seventh child of
+ * every row, had no column to land in. Grid auto-placement does not drop an
+ * extra child or overflow it: it starts a new implicit row and puts it in
+ * column one. Every company on the page therefore grew a second line with a ⋯
+ * sitting under its name, left-aligned, on all 21 rows at once, and the head
+ * row's trailing <span /> did the same.
+ *
+ * It reads as a layout break rather than as a redefinition, because nothing
+ * about it looks like a column count. A row grid may be RE-SIZED at a
+ * breakpoint; it must never be RE-COUNTED. test_classes.mjs fails on any two
+ * declarations of one row selector whose column counts disagree. */
+.sheet .section { margin-top: 30px; }
+.crow { grid-template-columns: 168px 104px 52px 1fr 60px 116px 28px; }
+@media (max-width: 1280px) { .crow { grid-template-columns: 148px 96px 46px 1fr 54px 104px 28px; } }
+.nothing .sep { color: var(--rule); }
+
+/* ------------------------------------------------- bars, labels, page intro
+ *
+ * These existed only as class names for a while. Forecast, the deadlines block
+ * and the Inbox footer all referenced .filters / .fc / .cbadge / .dl-*, none of
+ * which were ever written, so those pages rendered as unspaced running text.
+ * Everything below is built from the tokens at the top of this file — no new
+ * colour, font or radius. */
+
+.filters {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 14px 0 12px; font-size: 13.5px; color: var(--graphite);
+  border-bottom: 1px solid var(--rule);
+}
+.filters label { display: flex; align-items: center; gap: 6px; }
+.filters.foot { border-bottom: 0; border-top: 1px solid var(--rule); }
+
+/* One label component. Colour is meaning: default is neutral, .strong is a fact
+   read from the source itself, .soon is the only time-critical variant. */
+.label {
+  font-family: var(--data); font-size: 11px; letter-spacing: .02em;
+  border: 1px solid var(--rule); border-radius: 3px;
+  padding: 0 5px; color: var(--graphite); white-space: nowrap;
+}
+.label.strong { border-color: var(--graphite); color: var(--ink); }
+.label.soon { border-color: var(--alert); color: var(--alert); }
+
+.page-intro {
+  font-size: 14px; color: var(--graphite);
+  max-width: 78ch; margin: 22px 0 4px;
+}
+/* A SUB-HEADING LINE, AND THE -8px IS A TUCK UNDER AN <h2>.
+ *
+ * The section heading carries 14px of bottom margin, so a .sub that follows it
+ * pulls back to sit close. That is right when a .sub follows a heading and
+ * wrong every other time — and the Explainer folding work put one directly
+ * under the Closing-soon progress meter, where the negative margin dragged it
+ * eight pixels INTO the meter's own caption and the two lines overprinted
+ * around "...until they are done. Confirm dates."
+ *
+ * The tuck is now conditional on what it actually follows. A .sub anywhere else
+ * gets ordinary spacing, which is what it always needed. */
+.sub {
+  font-size: 13.5px; color: var(--graphite);
+  max-width: 78ch; margin: 0 0 12px;
+}
+h2 + .sub, h2 + .hint + .sub { margin-top: -8px; }
+.drow .dnote, .frow .fnote { font-size: 13px; color: var(--graphite); }
+.drow .days.soon { color: var(--alert); font-weight: 500; }
+.more { margin: 14px 0 0; }
+.more summary { font-size: 13px; color: var(--graphite); cursor: pointer; }
+.more summary:hover { color: var(--ink); }
+
+@media (max-width: 1280px) {
+  /* grid-recount-ok: .drow — the note cell is display:none on the line below,
+     so this row genuinely HAS five children here. Declaring five columns is the
+     fix, not the bug. test_grids.mjs refuses any other column-count change,
+     because the identical-looking edit without the display:none is what put a
+     stray ⋯ under all 21 company names. */
+  .drow { grid-template-columns: 124px 1fr 96px 76px 122px; }
+  .drow .dnote { display: none; }
+  .frow { grid-template-columns: 168px 176px 60px 1fr; }
+}
+
+/* ------------------------------------------------------- doing things
+ *
+ * Actions are quiet until you go looking for them: grey text buttons that darken
+ * on hover, no fills and no colour. An active state is weight and ink, the same
+ * vocabulary the nav already uses. --alert stays reserved for time-critical.
+ */
+/* A column, so the failure message ALWAYS lands on its own line under the
+   buttons and can never be clipped by the width of the actions column. */
+.rowacts { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.actbtns { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.rowacts .acterr { text-align: right; }
+.act {
+  background: none; border: 0; padding: 1px 4px; border-radius: 3px;
+  font-size: 12px; color: var(--graphite); cursor: pointer;
+}
+.act:hover { background: var(--card); color: var(--ink); }
+.act.on { color: var(--ink); font-weight: 600; }
+.act:disabled { opacity: .5; cursor: default; }
+.acterr { font-size: 12px; color: var(--alert); }
+
+/* Hidden until the row is hovered or focused — and always visible on a narrow
+   screen, where there is no hover to discover them with. */
+.role .rowacts, .row .rowacts { opacity: 0; transition: opacity .12s; }
+.role:hover .rowacts, .row:hover .rowacts,
+.role:focus-within .rowacts, .row:focus-within .rowacts { opacity: 1; }
+@media (max-width: 720px) {
+  .role .rowacts, .row .rowacts { opacity: 1; }
+}
+
+/* AN INVISIBLE CONTROL STILL TAKES ITS FULL WIDTH.
+ *
+ * "Copy pitch · Save · Mark applied · Hide" is 242px, it is `opacity: 0` until
+ * the row is hovered, and it was sitting in the row's `auto` track at every
+ * width — reserving a quarter of the row for something nobody could see. The
+ * role title is the `1fr` track beside it, so it got whatever was left: 386px
+ * at 1440, 274px at 1280, and NINETY-FOUR at 1100. At 94px "Deployment
+ * Strategist - US Government", "Deployment Strategist, Build to Apply" and
+ * "Forward Deployed Software Engineer" all truncate to the same dozen pixels,
+ * and three different Palantir roles become one row repeated three times.
+ *
+ * `opacity: 0` is exactly the wrong tool for this: it hides the pixels and
+ * keeps the box. Taking the verbs OUT OF FLOW gives the width back — they open
+ * to the left of the primary action, over the pay column, on a row that is
+ * already hovered and already tinted, so the ground they land on is --card
+ * either way.
+ *
+ * pointer-events go with it. An invisible 242px overlay that still swallows
+ * clicks would eat every click on the pay cell, and clicking a row is how you
+ * open it.
+ */
+@media (min-width: 721px) {
+  .row .rowend { position: relative; }
+  .row .actbtns {
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: var(--card);
+  }
+  .row .rowacts { pointer-events: none; }
+  .row:hover .rowacts, .row:focus-within .rowacts { pointer-events: auto; }
+}
+
+/* Checking an item off: it fades, then it is gone. Respects reduced motion. */
+.item.leaving { opacity: 0; transition: opacity .3s; }
+@media (prefers-reduced-motion: reduce) {
+  .item.leaving { transition: none; opacity: 0; }
+  .role .rowacts, .row .rowacts { transition: none; }
+}
+.item .ord { display: flex; align-items: center; gap: 7px; justify-content: flex-end; }
+.item .ord input[type="checkbox"] { margin: 0; cursor: pointer; }
+.item .ordnum { font-family: var(--data); font-size: 13px; color: var(--graphite); }
+
+/* The on-you row on a phone: the checkbox pinned left, the reason full width.
+ *
+ * TWO THINGS WERE WRONG AND ONLY ONE WAS VISIBLE. `grid-template-columns` was
+ * declared as `1fr auto` in one 720px block and as `auto 1fr` in another 1,000
+ * lines below, and the second won. `1fr auto` right-aligned the checkbox inside
+ * a track whose width depended on how long the title was, so items 01 and 03
+ * sat at different indents in the same list. The fix landed as a SECOND block
+ * rather than an edit to the first, which left the file asserting the dead
+ * value with nothing to say it was dead.
+ *
+ * IT HAS TO SIT HERE, AFTER `.item .ord`, and that is the whole reason the two
+ * blocks existed. A media query adds no specificity, so `justify-content:
+ * flex-start` only beats the `flex-end` on the line above by coming later in
+ * the file. Merging the two blocks upward — next to the `.item` grid rule,
+ * where they read as belonging — silently handed the row back to flex-end and
+ * reintroduced the ragged indent. Caught by diffing computed styles across the
+ * change rather than by looking at it. */
+@media (max-width: 720px) {
+  /* `auto 1fr` makes the ordinal content-width and gives the title the rest,
+     which is what the desktop layout has always done. */
+  .item { grid-template-columns: auto 1fr; }
+  /* NO `display` HERE. The old block set `display: inline` and it was dead —
+     the base `.item .ord` rule above sets `display: flex` and came later, so
+     the ord has been a flex row at this width all along. Carrying the dead
+     declaration into the merged block turned it live and changed the row. The
+     second dead value in one block; both were invisible until the computed
+     styles were diffed. */
+  .item .ord { text-align: left; margin-right: 8px; justify-content: flex-start; }
+  .item .why, .item details { grid-column: 1 / -1; }
+  .item .when { grid-column: 1 / -1; }
+}
+.item.donerow .what { text-decoration: line-through; }
+
+.linkish {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; text-align: right;
+}
+.linkish:hover { background: none; color: var(--ink); text-decoration: underline; }
+
+.additem {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--rule);
+}
+.additem input { flex: 1 1 180px; min-width: 120px; }
+@media (max-width: 640px) {
+  /* STACKED. Three boxes side by side on a phone are 110px each, which clips
+     every placeholder mid-word — and a clipped placeholder reads as a broken
+     field rather than as a hint. */
+  .additem { flex-direction: column; align-items: stretch; }
+  .additem input, .additem button { width: 100%; }
+  /* Tap targets. 44px is the size a thumb actually hits. */
+  .additem input, .additem button { min-height: 44px; }
+}
+
+/* The chevron that says a row opens. */
+.chev {
+  font-family: var(--data); font-size: 11px; color: var(--graphite);
+  transition: transform .12s; display: inline-block;
+}
+.row.open .chev, .role.open .chev { transform: rotate(90deg); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
+
+.nextstep { font-size: 13px; color: var(--graphite); }
+.nextstep.due { color: var(--alert); }
+.star {
+  background: none; border: 0; padding: 0 4px; cursor: pointer;
+  font-size: 14px; color: var(--rule); line-height: 1;
+}
+.star:hover { color: var(--graphite); }
+.star.on { color: var(--ink); }
+
+/* Footer — maintenance views live here, not in the main nav. */
+.footer {
+  max-width: var(--wide);
+  margin: 0 auto;
+  padding: 18px 28px 40px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  gap: 20px;
+  font-size: 12.5px;
+}
+.footer a { color: var(--graphite); text-decoration: none; }
+.footer a:hover { color: var(--ink); text-decoration: underline; }
+
+/* Freshness. Grey when current; --alert only when the data is actually stale,
+   which is a time-critical fact and therefore earns the accent. */
+.freshness { font-family: var(--data); font-size: 11.5px; letter-spacing: .04em;
+             text-transform: uppercase; color: var(--graphite); margin: 0 0 10px; }
+.freshness.stale { color: var(--alert); font-weight: 500; }
+
+/* Pay and the row actions share the right-hand column, so actions appearing on
+   hover cannot shift the pay figure. */
+.payacts {
+  display: inline-flex; align-items: baseline; gap: 12px; justify-content: flex-end;
+  flex-wrap: wrap; row-gap: 2px;   /* same reason as .rowend */
+}
+
+/* The Inbox row gained an actions + chevron column. */
+/* THE LAST TRACK IS FIXED, NOT `auto`, and that is what makes the header line
+   up with the rows under it.
+   
+   Every .row is its own grid container — they are not a table — so an `auto`
+   track is sized by ITS OWN content. The header's last cell is an empty
+   <span />, so its auto track collapsed to 0 and the 1fr role column swallowed
+   the slack; a body row's collapsed to whatever the actions measured. The
+   result was a header whose "location", "level" and "pay" sat 360px to the
+   right of the columns they named, at every width. Nothing errored, and the
+   only symptom was three labels pointing at the wrong things.
+   
+   132px is measured, not guessed: it holds the widest primary action ("Find a
+   person"), the chevron and their gap, with the hover verbs now out of flow. */
+.row { grid-template-columns: 128px 136px 1fr 116px 112px 92px 132px; }
+@media (max-width: 1280px) {
+  .row { grid-template-columns: 124px 110px 1fr 98px 118px 86px 132px; }
+}
+.rowend {
+  display: inline-flex; align-items: center; gap: 10px; justify-content: flex-end;
+  /* WRAPS, so .pactnote can take a line of its own. Without this the note was
+     a nowrap string in a 132px grid cell and it OVERLAPPED the pay and the
+     level tag -- "codin$153k ew - not a fit as applied" on screen. Same
+     lesson as .acterr: a message clipped by a column is worse than none. */
+  flex-wrap: wrap; row-gap: 2px;
+}
+
+/* The derived "next step" line under a target company. */
+.crow.nextrow { border-bottom: 1px solid var(--rule); padding-top: 0; padding-bottom: 9px; }
+
+/* Section subtitles and the /about page. Prose, not a table. */
+.controls.toggles { padding-top: 0; border-top: 0; }
+/* The folded filter panel. Seven checkboxes wrapped to a second line at 1280
+   and pushed the first result below the fold, while six of the seven are off
+   almost always — they answer "show me something normally hidden", which is an
+   occasional question, not a steering control. */
+.filterbtn {
+  font: inherit; font-size: 13px;
+  padding: 3px 10px;
+  color: var(--graphite);
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.filterbtn:hover { color: var(--ink); border-color: var(--graphite); }
+/* A closed panel that does not say how many filters are on is how you end up
+   staring at a short list wondering where the roles went. */
+.filterbtn.on { color: var(--ink); border-color: var(--ink); font-weight: 600; }
+.filterbtn[aria-expanded="true"] { color: var(--ink); border-color: var(--ink); }
+.filtersum { font-size: 12.5px; }
+.filterpanel { padding-bottom: 4px; }
+/* THE `hidden` ATTRIBUTE LOSES TO ANY `display` RULE.
+ *
+ * The UA stylesheet says `[hidden] { display: none }`, and `.controls` says
+ * `display: flex` — same specificity is not even needed, because the UA sheet
+ * is the weakest origin there is. So the filter panel carried `hidden`, read
+ * back as `.hidden === true`, and rendered in full the entire time. The fold
+ * shipped doing nothing.
+ *
+ * It was verified by reading the PROPERTY rather than the pixels, which is the
+ * exact shape of a check that measures nothing: `panel.hidden` was true and
+ * true is what it printed. Only a screenshot showed seven checkboxes still on
+ * the page. test_overflow.mjs now measures the panel's rendered height. */
+.controls[hidden] { display: none; }
+/* ONE LINE. angleLead already cuts at a clause boundary near 110 characters,
+   but a narrow viewport can still wrap that into two — and the whole point of
+   the cut is that every row in the list is the same height, so the truncation
+   is enforced here as well as in the text. The full angle is on the title. */
+/* PINNED TO THE TITLE'S COLUMN, spanning to the end of the row.
+   It was `grid-column: 2`, which is the 74px when2027 track — the browser then
+   sized and painted it against a track it was not in, and the whole row's
+   widths depended on that. Harmless while the text wrapped; the moment it went
+   nowrap for the one-line rule the row ran 55px past 1280. An explicit span is
+   a box the ellipsis can actually be computed against. */
+/* ONE LINE, CLAMPED — NOT `white-space: nowrap`.
+ *
+ * nowrap was the obvious way to write this and it broke the row at every width.
+ * A grid item's min-content contribution is distributed across the tracks it
+ * spans, and a nowrap item's min-content is the WHOLE STRING — so a 110-
+ * character angle inflated both the title track and the `auto` actions track
+ * beside it, and Daily ran 55px past 1280 and 268px past 390. `min-width: 0`
+ * did not save it: that bounds the item, not the contribution it makes to a
+ * track it spans.
+ *
+ * Line clamping keeps `white-space: normal`, so min-content stays one word and
+ * the tracks size exactly as they did before — while the box still shows one
+ * line with an ellipsis. Same visible result, none of the sizing side effects.
+ * Bisected: reverting only the nowrap took the suite from 2 failures to 55/55.
+ */
+.role .angle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  overflow: hidden;
+  grid-column: 3 / -1;
+  font-size: 13.5px; color: var(--graphite);
+  margin-top: 3px; max-width: 76ch; min-width: 0;
+}
+.prose { max-width: var(--col); }
+.abouth {
+  font-family: var(--display); font-variation-settings: "opsz" 72;
+  font-size: clamp(28px, 3.4vw, 40px); font-weight: 600; letter-spacing: -.02em;
+  margin: 40px 0 4px;
+}
+.prose h3 {
+  font-size: 17px; font-weight: 600; margin: 26px 0 6px;
+}
+.prose p { max-width: 74ch; margin: 0 0 12px; }
+.findings { max-width: 74ch; padding-left: 20px; }
+.findings li { margin-bottom: 9px; }
+.whyhere { font-size: 13px; color: var(--graphite); }
+
+/* Gate — the same grid-row component as every other table. It was still using
+   .fc / .cbadge, a vocabulary that was never written, so the page rendered as
+   running text exactly like Forecast did before 1a. */
+.prow { grid-template-columns: 300px 60px 1fr; }
+.krow { grid-template-columns: 160px 200px 1fr; }
+@media (max-width: 1280px) {
+  .prow { grid-template-columns: 250px 52px 1fr; }
+  .krow { grid-template-columns: 140px 170px 1fr; }
+}
+
+/* Sign-in. Reuses the app's paper, type and rules — the only page a
+   signed-out visitor can see, so it should look like the same tool. */
+.login { max-width: 46ch; margin: 64px auto 0; }
+.login-note { font-size: 12.5px; margin-top: 14px; }
+
+
+/* =====================================================================
+ * COLOUR AS INFORMATION
+ *
+ * Five meanings, defined in tokens.css, consumed here. The rules live in
+ * globals.css rather than beside their tokens because test_classes.mjs reads
+ * THIS file to decide whether a className has any styling behind it — a class
+ * defined in an imported stylesheet would look undefined to it, and that test
+ * exists because two whole pages once rendered as unspaced running text for
+ * weeks against a CSS vocabulary nobody had written.
+ * ===================================================================== */
+
+/* --- 1. fit band ------------------------------------------------------
+ *
+ * Two surfaces, one class. On a .scorebar it colours the bar and the word; on a
+ * row it draws a 3px rule down the left edge, so a list can be ranked without
+ * reading it.
+ *
+ * The rule is a border plus 10px of padding, NOT a negative margin hanging in
+ * the gutter. The gutter version was written first and would have broken the
+ * Inbox: Inbox rows have no .sheet wrapper at all — they sit directly in the
+ * body with no horizontal padding — so a -13px margin would have pushed every
+ * row past the left edge of the viewport. Taking 13px of width instead can only
+ * ever make a row NARROWER, which is the safe direction on a page whose grid
+ * once ran 1,270px sideways on a Rippling location string.
+ */
+.scorebar.b-excellent .fill { background: var(--band-excellent-fill); }
+.scorebar.b-strong    .fill { background: var(--band-strong-fill); }
+.scorebar.b-good      .fill { background: var(--band-good-fill); }
+.scorebar.b-fair      .fill { background: var(--band-fair-fill); }
+.scorebar.b-weak      .fill { background: var(--band-weak-fill); }
+
+.scorebar.b-excellent .band { color: var(--band-excellent); font-weight: 600; }
+.scorebar.b-strong    .band { color: var(--band-strong);    font-weight: 600; }
+.scorebar.b-good      .band { color: var(--band-good);      font-weight: 500; }
+.scorebar.b-fair      .band { color: var(--band-fair);      font-weight: 400; }
+.scorebar.b-weak      .band { color: var(--band-weak);      font-weight: 400; }
+
+.role, .row, .crow {
+  /* 4px, not 3. This is the only place the band's colour appears on a row read
+     at speed, and at 3px Excellent and Strong were not distinguishable at arm's
+     length — which is the acceptance test this phase was given. */
+  border-left: 4px solid transparent;
+  padding-left: 10px;
+}
+/* The header row is a label, not a judgement, so it never takes a colour — but
+   it must keep the same 13px offset or every column heading sits left of the
+   column it names. */
+.row.head, .crow.head { border-left-color: transparent; }
+/* Fair and Weak get NO rule, not a grey one. 353 of the 427 grouped roles are
+   Weak, and a grey stripe down every one of them is decoration that makes the
+   three that mean something harder to see. Absence is the fourth state. */
+.role.b-excellent, .row.b-excellent, .crow.b-excellent { border-left-color: var(--band-excellent-fill); }
+.role.b-strong,    .row.b-strong,    .crow.b-strong    { border-left-color: var(--band-strong-fill); }
+.role.b-good,      .row.b-good,      .crow.b-good      { border-left-color: var(--band-good-fill); }
+
+/* --- 2. deadline urgency ---------------------------------------------
+ *
+ * Written as compound selectors on purpose. `.item .when` and `.drow .days`
+ * both set a colour at two-class specificity, so a bare `.u-now` would lose to
+ * them and the chip would silently stay grey — the exact class of failure that
+ * makes a colour system look implemented and not be.
+ */
+.u-now,  .when.u-now,  .days.u-now  { color: var(--u-now);  font-weight: 500; }
+/* One row per close date gets extra weight: three firms sharing 2026-09-30 is
+   one fact, and three bold reds is three. See accentedDeadlines(). */
+.when.lead { font-weight: 600; }
+.u-soon, .when.u-soon, .days.u-soon { color: var(--u-soon); }
+.u-later,.when.u-later,.days.u-later{ color: var(--u-later); }
+
+/* --- 3. verification --------------------------------------------------
+ * The .label chip, which already exists; these only recolour it. */
+.label.v-strong { border-color: var(--v-strong); color: var(--v-strong); }
+.label.v-weak   { border-color: var(--v-weak);   color: var(--v-weak); }
+.label.v-none   { border-color: var(--rule);     color: var(--v-none); }
+
+/* --- 4. company category ----------------------------------------------
+ * A dot, not a tag. A tag would take a column on every row for a fact that is
+ * background context; a 7px dot rides along inside the name. */
+.dot {
+  display: inline-block;
+  /* 8px. At 7 the four hues were a smudge at reading distance, which made the
+     one thing they are for — telling a defense company from a VC firm without
+     reading the name — a thing you had to lean in for. */
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: 1px;
+  flex: none;
+}
+.dot.cat-defense    { background: var(--cat-defense); }
+.dot.cat-product    { background: var(--cat-product); }
+.dot.cat-consulting { background: var(--cat-consulting); }
+.dot.cat-vc         { background: var(--cat-vc); }
+
+/* The legend. One line, in the footer of a list view, so the dots are never a
+   code you have to have learned. */
+.legend {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  font-size: 12px; color: var(--graphite);
+  padding: 12px 0 0; margin-top: 18px;
+  border-top: 1px solid var(--rule);
+}
+.legend .lg { display: inline-flex; align-items: center; white-space: nowrap; }
+.legend .lgnote { color: var(--graphite); opacity: .8; }
+
+/* --- 5. progress -------------------------------------------------------
+ *
+ * "16 of 25 tracked windows have no date" is the tool's own stated biggest
+ * risk and it was a sentence. A green fill on a neutral track: no hue is
+ * interpolated and no threshold is invented.
+ *
+ * The remainder used to be amber, which made an EMPTY bar a solid amber block —
+ * People's "0 of 5 messages" read as a full alert instead of an untouched
+ * counter — and overloaded the colour that means "closes in 8-30 days"
+ * everywhere else. Not-yet is now the track, so empty looks empty.
+ */
+.meter { margin: 14px 0 0; max-width: 52ch; }
+.meter-track {
+  display: flex; height: 7px; border-radius: 2px;
+  overflow: hidden; background: var(--p-track);
+}
+.meter-done { background: var(--p-done); }
+.meter-label {
+  display: block; margin-top: 5px;
+  font-family: var(--data); font-size: 11.5px; color: var(--graphite);
+}
+.meter-label .mstrong { color: var(--ink); font-weight: 500; }
+
+/* The cost meter's bar. Deliberately tiny and grey: this is an implementation
+   detail the owner checks monthly, and it already sat too loud once. It only takes
+   a colour when it is over the cap, which is the one state that needs acting on. */
+.costbar {
+  display: inline-block; width: 46px; height: 5px;
+  border-radius: 2px; background: var(--p-track);
+  margin: 0 7px; vertical-align: 1px; overflow: hidden;
+}
+.costbar .costfill { display: block; height: 100%; background: var(--bar); }
+.costbar.over .costfill { background: var(--u-now); }
+
+/* At 390px the dots and legend must not force a sideways scroll. */
+@media (max-width: 480px) {
+  .legend { gap: 10px 14px; font-size: 11.5px; }
+  .meter { max-width: 100%; }
+}
+
+/* =====================================================================
+ * PEOPLE
+ *
+ * The networking surface. Same vocabulary as everything else — grid rows,
+ * hairlines, graphite metadata, no cards and no fills — because it is the
+ * same tool and a new page that looks like a different product reads as
+ * something bolted on.
+ * ===================================================================== */
+
+/* One person. A header line, then whatever they opened underneath it. Not a
+   .row grid: the useful things here are a name, where they work, what happened
+   last, and three verbs, and forcing that into the six-column table would put
+   the verbs somewhere they cannot be found on a phone. */
+.person { border-bottom: 1px solid var(--rule); padding: 11px 0; }
+.person:last-of-type { border-bottom: 0; }
+.phead {
+  display: grid;
+  grid-template-columns: 210px 1fr 170px auto;
+  column-gap: 18px;
+  align-items: baseline;
+}
+.phead > * { min-width: 0; }
+.pname { font-weight: 600; overflow-wrap: anywhere; }
+.pname .plink { margin-left: 6px; text-decoration: none; color: var(--graphite); }
+.pname .plink:hover { color: var(--ink); }
+.pmeta { font-size: 13.5px; color: var(--graphite); overflow-wrap: anywhere; }
+.pwhen {
+  font-family: var(--data); font-size: 11.5px; color: var(--graphite);
+  text-align: right; line-height: 1.35;
+}
+.pacts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* The cadence, said out loud. A list that simply stops mentioning somebody
+   looks like a bug; a rule you can read is one you can trust. */
+.pcadence {
+  font-size: 12.5px; color: var(--graphite);
+  border-left: 2px solid var(--rule); padding-left: 12px;
+  margin: 8px 0 0; max-width: 74ch;
+}
+
+.logsheet {
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end;
+  margin: 10px 0 2px; padding: 12px 0 4px;
+  border-top: 1px solid var(--rule);
+}
+.logsheet label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+.logsheet .lognote { flex: 1 1 240px; }
+.logsheet .lognote input { width: 100%; }
+.logacts { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+.phistory { list-style: none; margin: 8px 0 0; padding: 0; font-size: 12.5px; }
+.phistory li { color: var(--graphite); padding: 2px 0; }
+
+/* The draft. A textarea, because the whole point is that it gets edited before
+   a human reads it. */
+.draft { margin: 10px 0 4px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.drafthead { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 4px; }
+.draftwhen { font-size: 12.5px; color: var(--graphite); margin: 0 0 8px; }
+/* Which requisition the note is about. The select can hold a 60-character
+   title, so it is allowed to shrink rather than push the row sideways --
+   test_overflow.mjs fails on any page wider than the viewport. */
+.draftrole { font-size: 12.5px; color: var(--graphite); margin: 0 0 8px;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.draftrolesel { font: inherit; max-width: 100%; min-width: 0; flex: 1 1 240px; }
+.draftrolename { font-weight: 600; color: var(--ink); }
+/* The paste box. A plain textarea so an agent can fill it. */
+.pastebox { margin: 8px 0 4px; }
+.pastebox .drafttext { width: 100%; }
+/* The reason the role was chosen. Graphite, because it is the basis for a
+   decision rather than the decision. */
+.draftrolewhy { color: var(--graphite); }
+.draftoverlimit { color: var(--alert); font-weight: 600; }
+.drafttext {
+  width: 100%; max-width: 78ch; resize: vertical;
+  font: inherit; font-size: 14px; line-height: 1.5;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 3px; padding: 10px 12px;
+}
+.draftacts { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 8px 0 0; }
+.draftnote { font-size: 12.5px; color: var(--graphite); margin: 6px 0 0; max-width: 74ch; }
+/* Confirmation, not celebration. It says what happened and offers the way back. */
+.toast { font-size: 12.5px; color: var(--band-excellent); }
+.toast .linkish { color: var(--band-excellent); text-decoration: underline; }
+
+.prep { margin: 10px 0 4px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.prepfam { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
+.prepq { margin: 0 0 12px; padding-left: 22px; max-width: 78ch; }
+.prepq li { margin-bottom: 5px; font-size: 14px; }
+/* The ask ladder. Same three lines under every bank, because the sequencing is
+   the part people get wrong, not the questions. */
+.ladder {
+  list-style: none; margin: 0; padding: 0 0 0 12px;
+  border-left: 2px solid var(--rule); max-width: 74ch;
+}
+.ladder li { font-size: 13px; color: var(--graphite); margin-bottom: 4px; }
+
+/* Add a person. Two required fields and everything else optional, laid out so
+   the two required ones are the first thing on the first line. */
+.addopen { margin: 18px 0 4px; font-size: 13px; }
+.addperson {
+  margin: 16px 0 8px; padding: 14px 0 4px;
+  border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+}
+.addrow { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 10px; }
+.addrow label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; flex: 1 1 220px; }
+.addrow input, .addrow select { width: 100%; }
+.addacts { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 4px 0 8px; }
+
+.pgroup > h2 .count { margin-left: 8px; }
+.pulse { margin: 18px 0 4px; }
+
+/* Companies: the Find-2-names progress marker and the covered list. */
+.queue .qwhat .qprog { font-family: var(--data); font-size: 12px; color: var(--graphite); }
+.qdone { font-size: 13px; color: var(--graphite); margin: 12px 0 0; max-width: 82ch; }
+.tick { color: var(--band-excellent); font-weight: 600; }
+.whoknown { font-size: 13px; color: var(--graphite); }
+
+/* The referral shield. An interruption, once, never a block. */
+.shield {
+  margin: 6px 0 0; padding: 10px 12px;
+  border-left: 3px solid var(--u-soon); background: var(--card);
+  font-size: 13px; max-width: 62ch; text-align: left;
+}
+.shield p { margin: 0 0 8px; }
+.shieldacts { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+@media (max-width: 900px) {
+  .phead { grid-template-columns: 1fr; gap: 3px; }
+  .pwhen { text-align: left; }
+  .pacts { justify-content: flex-start; }
+}
+
+/* The two verbs on an owed follow-up. On the .why line rather than in their own
+   column: the reason and the action belong together, and a fifth grid track on
+   .item would have collapsed the reason text at 390px. */
+.owedacts { display: inline-flex; gap: 10px; align-items: center; margin-left: 10px; }
+.owedacts .act { text-decoration: none; }
+
+/* =====================================================================
+ * 390px — the width this app is actually read at
+ *
+ * the owner checks this between classes on a phone. Every page in the tool
+ * overflowed there, some of them by 430px, and none of it had ever been
+ * noticed because test_overflow.mjs only ever measured 1280. It measures both
+ * now, which is what turned this from a guess into a list.
+ *
+ * ONE treatment for every grid row rather than a hand-drawn layout per page.
+ * .row, .crow, .drow, .frow, .prow and .krow all have fixed pixel column
+ * tracks that sum to more than a phone is wide, and a track that cannot shrink
+ * cannot be talked out of overflowing. Below 640px they stop being grids and
+ * become flex-wrap runs: the cells flow onto as many lines as they need, in
+ * source order, and there is no width they can exceed.
+ *
+ * The header rows go away entirely. A column heading with no column under it
+ * is worse than no heading — it labels whichever cell happens to land beneath.
+ * ===================================================================== */
+
+@media (max-width: 640px) {
+  /* The masthead. Five nav items do not fit on one 390px line, and the fifth
+     was People — added by this pass, so this is a regression being fixed and
+     not an inherited one. */
+  .topbar {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 12px 16px 10px;
+  }
+  .nav { flex-wrap: wrap; gap: 6px 14px; }
+  .nav a { font-size: 13.5px; }
+
+  .brief { padding: 28px 16px 60px; }
+  .sheet { padding: 0 16px 60px; }
+  .footer { padding: 16px 16px 32px; flex-wrap: wrap; gap: 10px 16px; }
+
+  /* EVERY ROW GRID BECOMES A STACKED CARD, and this is the only place that is
+     said. The gap and padding here used to be 3px/12px and 11px, and were
+     overridden 1,100 lines further down by the 390px pass — so the file stated
+     one thing and the browser did another, twelve declarations' worth. The
+     winning values are stated once, in the block that turns the grid off.
+
+     THERE IS NO grid-template-columns HERE, and there was one below: the 390px
+     pass set `grid-template-columns: 1fr` on these same selectors. It never did
+     anything — a flex container ignores it — and it described a layout the app
+     does not have. The stacked card is produced by flex-wrap plus
+     `.row .title { flex: 1 0 100% }`, which puts the title on its own line and
+     lets the numeric cells flow inline underneath. A real single-column grid
+     would put every cell on its own line, which is not what any of these pages
+     look like. Removed rather than implemented, because the flex version is the
+     one that is tested and the one in the screenshots. */
+  .row, .crow, .drow, .frow, .prow, .krow, .srow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px;
+    padding: 12px 0 12px 10px;
+  }
+  /* Gate's table kept the ORIGINAL spacing, and only because its selector was
+     missing from the second block's list — an accident, not a decision. It is
+     preserved exactly rather than quietly normalised: this commit consolidates
+     and must not move a pixel, and a divergence worth removing is worth
+     removing on purpose. */
+  .krow { gap: 3px 12px; padding: 11px 0 11px 10px; }
+  /* Every cell may wrap and may break a long word. The desktop rows rely on
+     nowrap + ellipsis, which is right in a fixed column and is exactly what
+     stops a flex child from shrinking. */
+  /* .loctext is a GRANDCHILD, so the `> *` rule below does not reach it and it
+     would keep its desktop nowrap+ellipsis on a phone — where there is no fixed
+     column to ellipsise into and the text should simply wrap. */
+  .row .loctext { white-space: normal; overflow: visible; text-overflow: clip; }
+  .row > *, .crow > *, .drow > *, .frow > *, .prow > *, .krow > *, .srow > * {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    min-width: 0;
+    text-align: left;
+  }
+  .row.head, .crow.head, .drow.head, .frow.head, .prow.head, .krow.head,
+  .srow.head { display: none; }
+
+  /* The role title gets its own line — it is the thing being scanned, and
+     sharing a line with the company turns both into a run-on. This `flex` is
+     also what actually produces the stacked card; see the note on the row rule
+     above. */
+  .row .title, .crow .title { flex: 1 0 100%; }
+  .row .rowend, .crow .nextrow > span { justify-content: flex-start; }
+  .rowacts { align-items: flex-start; }
+  .actbtns { flex-wrap: wrap; white-space: normal; }
+
+  /* Daily's role rows: the actions sit under the row rather than beside the
+     pay figure, which at this width would leave neither enough room. */
+  .role { grid-template-columns: 1fr; row-gap: 3px; }
+  /* One line is a promise about a FIXED COLUMN. On a phone there is no column
+     to clamp into and the rows are already stacked, so the angle wraps — the
+     same call .loctext makes one page over, for the same reason. */
+  .role .angle { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; }
+  .role .payacts { justify-content: flex-start; }
+  .role .who .loc { margin-left: 0; display: block; }
+
+  .detail { padding: 12px 0 16px; grid-template-columns: 1fr; }
+  .confirmlist > li { grid-template-columns: 1fr; }
+  .queue > summary { grid-template-columns: 1fr; gap: 3px; }
+  .drafttext { font-size: 15px; }   /* 16px-ish, so iOS does not zoom the page */
+  .addrow label { flex: 1 1 100%; }
+}
+
+/* ------------------------------------------------------------- lifecycle
+ *
+ * Where a role got to, in the expanded row. Replaces a single-value stage
+ * select that was keyed by JOB key and kept no history, so "applied three
+ * weeks ago and heard nothing" and "applied yesterday" rendered identically.
+ */
+.lifecycle { margin: 4px 0 14px; }
+.lifebtns { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
+.lifewhen { font-size: 13px; color: var(--graphite); margin: 0 0 4px; }
+/* GRAPHITE, never accented. A stalled application is not a deadline: nothing is
+   running out, it has just gone quiet, and the accent is spent on the things
+   that are actually unrecoverable. */
+.lifenudge { color: var(--graphite); }
+
+.prepkit { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--rule); }
+.prepkit ul { margin: 0 0 12px; padding-left: 20px; max-width: 78ch; }
+.prepkit li { margin-bottom: 4px; font-size: 14px; }
+.prepsub {
+  font-size: 11px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--graphite); margin: 10px 0 5px;
+}
+.shieldq { font-weight: 500; margin: 0 0 8px; }
+
+/* The "⋯" tap target. Desktop already shows the verbs — on hover on a row, or
+   always once a row is focused — so the menu button is a phone-only affordance
+   and is display:none above 720px. */
+.more-tap { display: none; }
+@media (max-width: 720px) {
+  .more-tap {
+    display: inline-block;
+    font-size: 16px; line-height: 1;
+    padding: 2px 10px;
+    border: 1px solid var(--rule); border-radius: 3px;
+    background: var(--card);
+  }
+  /* Collapsed until tapped. The buttons stay in the DOM — hiding them with
+     [hidden] rather than unmounting keeps the optimistic state in useAction
+     alive across an open/close, so a save in flight is not lost. */
+  .rowacts .actbtns { display: none; }
+  .rowacts.menuopen .actbtns { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 4px; }
+  .rowacts.menuopen .more-tap { border-color: var(--ink); }
+}
+.additemhint { font-size: 12px; color: var(--graphite); margin: 6px 0 0; max-width: 78ch; }
+
+/* ------------------------------------------------------- confirm focus mode
+ *
+ * The one modal in the app, and it earns it: this is sixteen answers in a row
+ * and the entire value is having nothing else on screen. Opt-in, Escape closes,
+ * never opens by itself. The inline controls elsewhere stay inline.
+ */
+.focusopen { margin: 14px 0 18px; font-size: 13px; }
+.focusbtn {
+  font-size: 15px; font-weight: 500;
+  padding: 8px 16px; border-radius: 4px;
+  border: 1px solid var(--ink); background: var(--card); color: var(--ink);
+  text-decoration: none; display: inline-block;
+}
+.focusbtn:hover { background: #e7eaee; }
+
+.focus {
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--paper);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+.focuscard { width: 100%; max-width: 60ch; }
+.focusprog {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-family: var(--data); font-size: 12px; color: var(--graphite);
+  margin: 0 0 24px; padding-bottom: 8px; border-bottom: 1px solid var(--rule);
+}
+.focusclose { color: var(--graphite); }
+.focusfirm {
+  font-family: var(--display); font-variation-settings: "opsz" 72;
+  font-size: clamp(26px, 4vw, 40px); font-weight: 600; letter-spacing: -.02em;
+  margin: 0 0 6px; line-height: 1.1;
+}
+.focusprogram { font-size: 16px; margin: 0 0 6px; max-width: 46ch; }
+.focuswhen {
+  font-family: var(--data); font-size: 12px; color: var(--graphite); margin: 0 0 24px;
+}
+.focusgo { margin: 0 0 24px; }
+.focusacts { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 0 0 24px; }
+.focusacts input[type="date"] { font-family: var(--data); }
+/* The keyboard hint sits ON the button rather than in a legend nobody reads.
+   Sixteen in a row is where reaching for the mouse becomes most of the cost. */
+.kbd {
+  font-family: var(--data); font-size: 11px;
+  border: 1px solid var(--rule); border-radius: 2px;
+  padding: 0 4px; margin-right: 7px; color: var(--graphite);
+}
+.focusnote { font-size: 12.5px; color: var(--graphite); max-width: 56ch; margin: 0; }
+
+@media (max-width: 640px) {
+  .focus { padding: 16px; align-items: flex-start; }
+  .focusacts { flex-direction: column; align-items: stretch; }
+  .focusacts button, .focusacts input { width: 100%; }
+  .kbd { display: none; }   /* no keyboard to hint at */
+}
+
+/* ------------------------------------------------------- SF-86 evidence pack
+ *
+ * A form, not a table: it gets filled in three minutes at a time over months,
+ * and every box saves when you click away from it.
+ */
+.sfrow {
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end;
+  padding: 10px 0; border-bottom: 1px solid var(--rule);
+}
+.sfrow:last-of-type { border-bottom: 0; }
+.sffield { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; flex: 1 1 180px; }
+.sffield input { width: 100%; }
+.sf-label { flex: 2 1 280px; }
+.sf-from_ym, .sf-to_ym { flex: 0 0 130px; }
+/* Confirmation that fades. A field that failed keeps its red until it is fixed,
+   because a field that failed to save and then went quiet is a field you
+   believe is saved. */
+.sfok { font-size: 11px; color: var(--band-excellent); }
+.sferr input { border-color: var(--u-now); }
+.sfdel { font-size: 12px; color: var(--graphite); align-self: flex-end; padding-bottom: 5px; }
+.sfadd { margin: 12px 0 0; font-size: 13px; }
+/* "None" as an answer: a checkbox with its own timestamp beside it. */
+.sfaffirm { margin: 12px 0 0; font-size: 13px; }
+.sfaffirm label { cursor: pointer; }
+.sfaffirm input { vertical-align: -1px; margin-right: 4px; }
+
+/* The timeline. THE reason the address section is not just a list: a four-month
+   hole in 2021 is invisible in a list sorted by any field you like — you have to
+   lay the spans on one line to see that they do not touch. */
+.sftimeline { margin: 4px 0 16px; max-width: 100%; }
+.sftrack {
+  position: relative; height: 14px; border-radius: 2px;
+  background: var(--p-track); overflow: hidden;
+}
+.sfspan { position: absolute; top: 0; bottom: 0; background: var(--p-done); }
+.sfgap  { position: absolute; top: 0; bottom: 0; background: var(--u-now); }
+.sfscale {
+  display: flex; justify-content: space-between;
+  font-family: var(--data); font-size: 11px; color: var(--graphite); margin: 4px 0 0;
+}
+.sfgaps { font-size: 13px; color: var(--u-now); margin: 6px 0 0; max-width: 78ch; }
+/* Overlapping employment: something to confirm, not an error, so the note
+   colour rather than the alert colour. */
+.sfoverlap { font-size: 13px; color: var(--graphite); margin: 6px 0 0; max-width: 78ch; }
+.sfnogaps { font-size: 13px; color: var(--band-excellent); margin: 6px 0 0; }
+
+/* An on-you row that is really a whole project links to where the work is. */
+.itemproject { display: block; font-size: 13px; margin-top: 4px; }
+
+@media (max-width: 640px) {
+  .sffield, .sf-label, .sf-from_ym, .sf-to_ym { flex: 1 1 100%; }
+}
+
+/* ------------------------------------------------------------- explanations
+ *
+ * A band is a one-word summary of a model's judgement behind four
+ * deterministic gates, and the only thing on screen was the word. A central
+ * number that cannot be interrogated is one you either trust blindly or stop
+ * using — and "read the scorer" is not available to somebody who does not
+ * write code.
+ */
+.why { margin: 0 0 16px; }
+.whyband { font-size: 14px; margin: 0 0 4px; max-width: 74ch; }
+.whyconf { font-size: 13px; color: var(--graphite); margin: 0 0 10px; max-width: 74ch; }
+/* The blockers, first and in their own voice. "Why is this Weak" is usually not
+   a question about the score — it is "why can't I apply to this", and that
+   answer is a gate. */
+.whyblocked {
+  font-size: 13.5px; margin: 0 0 12px; max-width: 74ch;
+  border-left: 3px solid var(--u-now); padding-left: 12px;
+}
+.whygates { list-style: none; margin: 0 0 14px; padding: 0; max-width: 82ch; }
+.whygates li {
+  display: grid; grid-template-columns: 128px 1fr; gap: 12px;
+  font-size: 13px; padding: 3px 0;
+}
+.whygates .gname { color: var(--graphite); }
+.whygates .gtext { color: var(--ink); }
+.whygates .gpass .gname::before { content: "✓ "; color: var(--band-excellent); }
+.whygates .gfail .gname::before { content: "✕ "; color: var(--u-now); }
+.whygates .gfail .gtext { color: var(--graphite); }
+.whycols { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 34px; }
+.whymodel { font-size: 12.5px; color: var(--graphite); margin: 6px 0 0; max-width: 78ch; }
+/* The band says it can be asked something. A quiet dotted rule, not a link
+   colour: it is still primarily a score. */
+.scorebar.asks .band { border-bottom: 1px dotted var(--rule); cursor: pointer; }
+
+/* First-run hints. Once dismissed the "?" is gone for good — a help affordance
+   that stays forever is chrome, and chrome on every row is worse than the
+   confusion it was meant to fix. */
+.hint { position: relative; display: inline-block; }
+.hintq {
+  font-family: var(--data); font-size: 11px; line-height: 1;
+  width: 16px; height: 16px; padding: 0;
+  border: 1px solid var(--rule); border-radius: 50%;
+  background: var(--card); color: var(--graphite);
+  margin-left: 5px; vertical-align: 1px; cursor: pointer;
+}
+.hintq:hover { border-color: var(--graphite); color: var(--ink); }
+.hintbody {
+  position: absolute; z-index: 40; top: 22px; left: -4px;
+  width: 280px; max-width: 68vw;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 4px;
+  padding: 10px 12px;
+  font-size: 12.5px; font-weight: 400; line-height: 1.45;
+  color: var(--ink); text-transform: none; letter-spacing: 0;
+  white-space: normal; text-align: left;
+}
+.hintgot { display: block; margin-top: 8px; color: var(--graphite); text-align: left; }
+
+@media (max-width: 640px) {
+  .whygates li { grid-template-columns: 1fr; gap: 0; }
+  .whycols { grid-template-columns: 1fr; }
+  .hintbody { position: static; display: block; width: auto; max-width: 100%; margin-top: 6px; }
+}
+
+/* The on-you row's phone layout is declared once, up beside the .item grid it
+   overrides — see the note there. This block held the correction and the one
+   above held the value it was correcting, 1,000 lines apart. */
+
+/* ------------------------------------------------- the composite TODAY card
+ *
+ * "Apply to Accenture, Deloitte and EY-Parthenon" is three applications and it
+ * had one checkbox — so there was no way to record having done two of them,
+ * and the only honest moment to tick it was a week after starting.
+ *
+ * One row per firm. Tap targets are 44px tall on a phone because this is the
+ * single most important control on the page in September.
+ */
+.composite { margin: 14px 0 4px; }
+.compcount {
+  font-family: var(--data); font-size: 12px; color: var(--graphite);
+  margin: 0 0 8px;
+}
+.complist { list-style: none; margin: 0; padding: 0; }
+.comprow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  align-items: baseline;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.comprow:last-child { border-bottom: 0; }
+.compmain { display: flex; align-items: baseline; gap: 8px; cursor: pointer; min-width: 0; }
+.compmain input[type="checkbox"] { cursor: pointer; flex: none; }
+.compfirm { font-weight: 600; }
+.compprog { font-size: 13px; color: var(--graphite); overflow-wrap: anywhere; }
+.compwhen {
+  font-family: var(--data); font-size: 12px; white-space: nowrap; text-align: right;
+}
+.compask, .compnote {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 12.5px; margin-top: 4px;
+}
+.compask button { font-size: 12.5px; }
+.compnote { color: var(--graphite); }
+.compdone { font-size: 14px; color: var(--graphite); margin: 14px 0 0; }
+
+@media (max-width: 640px) {
+  /* 44px tap targets. This is the control that matters most this month and it
+     is used standing up, on a phone, between classes. */
+  .comprow { grid-template-columns: 1fr; padding: 4px 0; }
+  .compmain { min-height: 44px; align-items: center; }
+  .compmain input[type="checkbox"] { width: 20px; height: 20px; }
+  .compwhen { text-align: left; }
+}
+/* Track application, on a Forecast open-now row. */
+.trackwrap { display: block; margin-top: 5px; }
+.trackdone { font-family: var(--data); font-size: 11px; color: var(--band-excellent); }
+.trackform { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+.trackform input[type="date"] { font-family: var(--data); font-size: 12px; }
+
+/* --------------------------------------------------- projects and their units
+ *
+ * A project renders as ONE row with a progress bar, not as sixteen identical
+ * rows. Sixteen identical rows is a wall, and a wall gets scrolled past — which
+ * is what "Confirm the 16 dates nobody is watching" was before it had children.
+ */
+.parentrow .why { max-width: 62ch; }
+/* Inline, on the parent's own line. It used to sit in `.why`, which auto-places
+   onto an implicit second grid row, so a parent with nothing to report was two
+   lines tall — and one line was the entire point of collapsing it. */
+.parenttoggle { font-size: 12.5px; color: var(--graphite); }
+/* The expander body starts on its own row when it exists at all. */
+.parentrow .why { grid-column: 2 / -1; margin-top: 8px; }
+.childlist { margin: 8px 0 0; padding-left: 20px; font-size: 13px; }
+.childlist li { margin-bottom: 3px; }
+.childlist .childdone { color: var(--graphite); text-decoration: line-through; }
+.childlist .childstate { color: var(--graphite); }
+/* "1 of 16" beside a surfaced child, so finishing today's does not read as
+   finishing the project. */
+.unitmark { font-family: var(--data); font-size: 11.5px; color: var(--graphite); }
+
+/* THE PROVENANCE CHIP. Filled means a real application window closes; outlined
+   means a date you set yourself. They rendered identically before, though
+   missing one costs an afternoon and the other costs a recruiting cycle. */
+/* The rules that used to live here were a SECOND chip implementation: its own
+   .chip block, its own .chip-filled / .chip-outline, and a three-step scale
+   where the component has four, so an item due today rendered exactly like one
+   due in six days. Deleted; the one set of chip rules is further down this
+   file and Items.js now builds its class with chipClass() like everything
+   else. */
+
+/* ---------------------------------------------------------- the one verb
+ *
+ * Apply / Find a person / Watch, on the right of every role row. It is the
+ * only thing on the row that says what to DO, so it is the only thing on the
+ * row allowed to look like a control — Save and Hide stay as quiet text
+ * buttons that appear on hover.
+ *
+ * Three weights, matching the three answers. Apply is ink on a filled rule
+ * because it is the one that closes; Find a person is outlined because it is
+ * real work with no deadline; Watch is not a button at all, because there is
+ * nothing to press and a disabled-looking button invites a click that does
+ * nothing.
+ */
+.pact {
+  font-size: 11.5px;
+  font-family: var(--body);
+  white-space: nowrap;
+  text-decoration: none;
+  border-radius: 3px;
+  padding: 3px 9px;
+  line-height: 1.4;
+  display: inline-block;
+}
+.pact.apply {
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  border: 1px solid var(--ink);
+}
+.pact.apply:hover { background: var(--band-strong); border-color: var(--band-strong); }
+.pact.find {
+  color: var(--band-strong);
+  border: 1px solid var(--band-strong);
+  background: transparent;
+}
+.pact.find:hover { background: var(--band-strong); color: var(--paper); }
+/* Words, not a control. It stays put rather than appearing on hover, because
+   "nothing to do here" is the answer to a question the row is asking whether
+   or not the pointer is anywhere near it. */
+.pact.watch {
+  color: var(--graphite);
+  border: 1px solid transparent;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Wrong cycle. Reached from the hide-reasons panel and kept apart from the
+   five reasons in it, because it does something larger than they do. */
+.hidewhy button.cyclebtn { color: var(--u-now); }
+.cyclewhy { align-items: flex-start; flex-direction: column; }
+.cyclewhy label { display: flex; flex-direction: column; gap: 3px; width: 100%; }
+.cyclewhy input {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  min-width: 26ch;
+  width: 100%;
+}
+
+/* The undo list at the foot of Inbox. Collapsed: the point of these rows is
+   that they are out of the way, and only the count has to be visible. */
+.cyclelist { margin: 26px 0 8px; font-size: 12.5px; max-width: 74ch; }
+.cyclelist summary { color: var(--graphite); cursor: pointer; }
+.cyclelist ul { list-style: none; padding: 0; margin: 8px 0 0; }
+.cyclelist li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 0;
+  border-top: 1px solid var(--rule);
+}
+.cyclelist .co { font-weight: 600; }
+.cyclelist .dim { color: var(--graphite); font-size: 11.5px; }
+.cyclelist button.linkish { margin-left: auto; }
+
+
+
+/* --------------------------------------------------------------------- chips
+ *
+ * One component, three variants, defined once. Small coloured labels had
+ * accumulated in five places with five private colour rules — and the gap
+ * between a chip and the text before it was set at each call site, so Closing
+ * soon had none and the verification chip read as part of the company name.
+ * The gap lives here now.
+ */
+.chip {
+  display: inline-block;
+  margin-left: 8px;             /* the gap, once, for every chip everywhere */
+  padding: 1px 7px;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 500;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border: 1px solid transparent;
+}
+/* A chip that starts a line has nothing to be spaced from. */
+.chip:first-child { margin-left: 0; }
+
+/* 1. urgency. TODAY is the ONLY filled red pill in the app — that is what
+      makes it findable, and why nothing else is allowed to be one. */
+.chip-urgency.tone-today {
+  background: var(--u-now);
+  color: var(--paper);
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.chip-urgency.tone-now   { background: var(--u-now-tint);   color: var(--u-now); }
+.chip-urgency.tone-soon  { background: var(--u-soon-tint);  color: var(--u-soon); }
+.chip-urgency.tone-later { background: var(--u-later-tint); color: var(--u-later); }
+
+/* A date HE set. Same scale, outlined rather than filled: the distinction is
+   "the world will not wait" against "I said I would", and rendering the second
+   as the first is how a tool teaches you that red means nothing. */
+.chip-urgency.outlined { background: transparent; }
+.chip-urgency.outlined.tone-today { color: var(--u-now); border-color: var(--u-now); font-weight: 600; }
+.chip-urgency.outlined.tone-now   { border-color: var(--u-now); }
+.chip-urgency.outlined.tone-soon  { border-color: var(--u-soon); }
+.chip-urgency.outlined.tone-later { border-color: var(--u-later); }
+
+/* 2. verification. The quietest-looking chip and the most important: 1 of 25
+      dates is read off a firm's own site and the rest are prompts to check. */
+.chip-verification.tone-confirmed {
+  background: var(--v-strong-tint);
+  color: var(--v-strong);
+  border-color: var(--v-strong);
+}
+.chip-verification.tone-weak       { color: var(--v-weak); border-color: var(--v-weak); }
+.chip-verification.tone-unconfirmed{ color: var(--v-weak); border-color: var(--v-weak); border-style: dashed; }
+/* A date HE set, for a firm that has published none. Graphite and solid — not
+   the amber of a guess about the firm's date, because there is no firm's date
+   to guess. The same idea as the outlined urgency chip: "I said I would",
+   never "the world will not wait". */
+.chip-verification.tone-self { color: var(--v-none); border-color: var(--v-none); }
+
+/* 3. status. Grey on purpose. A fact about the role, not a claim on the day. */
+.chip-status {
+  font-family: var(--data);
+  /* 11px is the floor for every piece of text in this app, and a status chip
+     is not an exception just because it is a label — it was 10.5 and the
+     contrast test caught it in the same commit that wrote it. */
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--graphite);
+  background: var(--u-later-tint);
+}
+
+/* The "?" that carries the scale's one sentence, on the first urgency chip. */
+/* A circled glyph, outside the chip's own words. As bare text it concatenated
+   into "30 days?", which reads as doubt about the number — the exact wrong
+   implication on the one page whose subject is how much a date can be trusted. */
+.chipq {
+  display: inline-block;
+  margin-left: 6px;
+  width: 14px;
+  height: 14px;
+  line-height: 13px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: .65;
+  cursor: help;
+  vertical-align: 1px;
+}
+
+/* ------------------------------------------------------------- the right rail
+ *
+ * Daily was a phone column blown up onto a desktop canvas: an 1100px measure
+ * down the middle with 300px of empty page either side, and everything that
+ * answers "where am I" below the fold, which is to say never read.
+ *
+ * The rail is not new information. Same numbers, same functions, moved into
+ * space the page was already leaving empty. Below 1200px it is DISPLAY:NONE and
+ * every piece falls back to where it already lived further down the page, so
+ * nothing is lost on a phone — it is re-flowed.
+ */
+.withrail { max-width: var(--col); margin: 0 auto; }
+.withrail > .brief { max-width: none; margin: 0; }
+.rail { display: none; }
+
+@media (min-width: 1200px) {
+  .withrail {
+    display: grid;
+    /* The spine keeps its own measure. The rail is what fills the gutter that
+       was empty, so the reading column is not narrowed to make room. */
+    grid-template-columns: minmax(0, var(--col)) 300px;
+    gap: 40px;
+    /* + the gap, the rail, AND the page padding on both sides. Without the
+       last term the outer edge sits exactly on the viewport edge at 1440 and
+       every value in the rail is clipped by a few pixels — which reads as a
+       rendering fault rather than as a layout that is one number short. */
+    max-width: calc(var(--col) + 300px + 40px + 56px);
+    padding-right: 28px;
+  }
+  .rail {
+    display: block;
+    position: sticky;
+    /* Aligned with the date, and it stays there. The whole point is that the
+       context is on screen while you read the task. */
+    top: 24px;
+    align-self: start;
+    padding: 44px 0 90px;
+    font-size: 13px;
+  }
+  /* One number, one place. The topbar carries the month-to-date figure on every
+     page; while the rail is on screen it carries it here instead, because the
+     same figure rendered twice on one screen is a figure you check twice and
+     trust once. */
+  body:has(.rail) .topbar .cost-meter { display: none; }
+
+  /* And the same for the frame line under the date. It carries exactly the four
+     facts the rail now carries, as a 9px-feeling mono string joined with dots —
+     which is the shape the rail exists to replace, so showing both puts the
+     worse rendering directly above the better one.
+     
+     HIDDEN, not deleted. Below 1200px the rail is gone and this line is the
+     ONLY place those four facts appear; removing it from the markup would mean
+     a phone loses months-to-graduation entirely. test_overflow asserts that
+     fact is still stated at 1100 and 390 for exactly this reason. */
+  .frame { display: none; }
+}
+
+.railblock { margin-bottom: 26px; }
+
+/* ------------------------------------------------- the section list
+ *
+ * Daily is two screens on a laptop and "Worth a look" is below the fold on
+ * every one of them, while the rail under the cost block was empty. Same
+ * vocabulary as the rest of the rail: graphite, a hairline, no fills.
+ */
+/* The jump list's own block. No extra rule above it — the railblock margin is
+   the separation, and a second hairline here would make the page's table of
+   contents look like a fifth statistic. */
+.railnav { border-top: 1px solid var(--rule); padding-top: 14px; }
+.railnavlist { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.railnavlist li {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; padding: 3px 0;
+}
+.railnavlist a { color: var(--graphite); text-decoration: none; }
+.railnavlist a:hover { color: var(--ink); }
+/* The folded/unfolded markers lived here, and the foldable section heading
+   below them. Both went with the collapse toggle: a control on every heading,
+   on a page whose redesign was about having less to look at, for a decision
+   nobody was going to make each morning. The jump list above survives because
+   it pays for itself with no interaction at all. */
+.railhead {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--graphite);
+  margin: 0 0 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--rule);
+}
+.railstats { margin: 0; }
+/* Label above value, not beside it. Beside it, the four labels are four
+   different lengths and the values never line up, which is the shape the old
+   dot-joined line already had. */
+.railstat { display: flex; justify-content: space-between; align-items: baseline;
+            gap: 10px; padding: 4px 0; }
+.railstat dt { color: var(--graphite); font-size: 12px; }
+.railstat dd {
+  margin: 0;
+  font-family: var(--data);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  white-space: nowrap;
+}
+/* Parenthesised, because without it the aside ran straight into the value and
+   "16 of 21" + "25 tracked" read as the single number "16 of 21 25". The whole
+   point of the aside is that it is a DIFFERENT population. */
+.railaside { color: var(--graphite); font-size: 11px; }
+.railaside::before { content: "("; }
+.railaside::after { content: ")"; }
+/* A stat whose aside is a list of firm names needs the whole width, not the
+   right-hand column: "3 windows closing next — in 29 days" above "Next window
+   opens — in 29 days" read as one number feeding two labels until the names
+   were on the row. */
+.railstat.wide { display: block; }
+.railstat.wide dd { margin-top: 1px; }
+.railstat.wide .railaside { display: block; margin-top: 1px; }
+.railnote { margin: 6px 0 0; font-size: 12px; color: var(--graphite); line-height: 1.45; }
+.railnote:empty { display: none; }
+
+/* Each section's primary action is a BUTTON, not an underlined link. An
+   underline is what every word in a sentence gets; a border and padding is what
+   the one thing you are supposed to press gets. */
+.railbtn {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--card);
+  text-decoration: none;
+}
+.railbtn:hover { background: #e7eaee; text-decoration: none; }
+
+.railflight { list-style: none; margin: 0; padding: 0; }
+.railflight li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 12px;
+}
+.railflightn { font-family: var(--data); font-variant-numeric: tabular-nums; }
+.railspend { font-size: 13px; }
+.railcap { color: var(--graphite); }
+.railcost .costbar { display: block; margin: 6px 0 0; width: 100%; }
+.costwrap { display: block; }
+.costwrap.over .railspend { color: var(--u-now); font-weight: 600; }
+.railflightlabel { color: var(--graphite); }
+/* The folded state of an Explainer: one line, an expander, nothing deleted. */
+.sub.folded { color: var(--graphite); }
+
+/* Tap targets on the TODAY card.
+ *
+ * The checkbox itself is 13px and cannot usefully be grown without looking
+ * wrong, so the LABEL is the target: `.compmain` wraps the box and the firm
+ * name, and giving the row 44px of height makes the whole line tappable. That
+ * is the correct fix anyway — aiming at a 13px square with a thumb is a miss
+ * waiting to happen, and the name beside it is what a person actually points
+ * at. */
+@media (max-width: 640px) {
+  .comprow { padding: 12px 0; }
+  .compmain { min-height: 44px; align-items: center; }
+  .compmain input[type="checkbox"] { width: 20px; height: 20px; }
+  /* The on-you list, same reasoning — and the ORD CELL is the target, not the
+     box inside it. A 20px checkbox is still a 20px target however much padding
+     sits around it unless the padding belongs to something clickable, and here
+     the cell is the label, so growing the cell grows the target. */
+  .item .ord {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .item .ord input[type="checkbox"] { width: 20px; height: 20px; }
+  .items .item { padding-top: 10px; padding-bottom: 10px; }
+}
+
+/* The ⋯ on a company row, and what it opens.
+ *
+ * It replaces a bare text button reading "wrong cycle" that sat in the flow of
+ * each company's note — which put those two words at the end of 21 sentences
+ * and made the page appear to assert that every company was the wrong cycle.
+ * A control's resting state is a claim about the row it sits on. */
+.comenu { position: relative; display: inline-flex; justify-content: flex-end; }
+.comore {
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 5px;
+  color: var(--graphite);
+  background: none;
+  border: 1px solid transparent;
+}
+.crow:hover .comore, .comore[aria-expanded="true"] { border-color: var(--rule); background: var(--card); }
+.comenubody {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 11px 12px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(20, 24, 31, .13);
+  font-size: 12px;
+  text-align: left;
+  white-space: normal;
+}
+.comenuhead { font-weight: 600; font-size: 12.5px; }
+.comenulabel { display: flex; flex-direction: column; gap: 4px; color: var(--graphite); }
+.comenulabel input {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  color: var(--ink);
+}
+.comenuacts { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.comenuacts button { font-size: 12px; }
+
+/* A child task's empty date slot. Nothing at rest — the parent holds the
+   schedule and this row never had a deadline, so "NO DATE" was the tool
+   reporting the absence of something it did not intend to have. The affordance
+   to give it a real date appears on hover. */
+.when.nodate { border-color: transparent; background: none; min-width: 1px; }
+.nodatehint { color: var(--graphite); font-size: 11px; opacity: 0; transition: opacity .12s; }
+.item:hover .nodatehint, .when.nodate:focus .nodatehint { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .nodatehint { transition: none; } }
+@media (max-width: 720px) { .nodatehint { opacity: 1; } }
+/* "Nothing is due a check" — the cooldown working, said out loud. It used to
+   render nothing at all, which is indistinguishable from a broken section. */
+.focusopen.focusquiet { color: var(--graphite); font-size: 13px; max-width: 74ch; }
+
+/* Where a role is, and when it starts. Two small grey tags, display only —
+   neither touches a score. */
+.ptag, .stag {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 0 5px;
+  font-family: var(--data);
+  font-size: 11px;
+  line-height: 1.5;
+  border-radius: 2px;
+  color: var(--graphite);
+  background: var(--u-later-tint);
+  white-space: nowrap;
+  vertical-align: 1px;
+}
+/* One of the two cities he wants, or remote. Ink rather than a colour: this is
+   a preference being met, not a judgement about the role, and the five colour
+   meanings are spoken for.
+   
+   The tick came in because weight alone was doing the whole job, and three
+   weights of one chip read as three different components — the audit called
+   them "mono chips, bold caps and mono lowercase" and they were all .ptag. */
+.ptag.want { color: var(--ink); font-weight: 600; }
+.ptick { margin-left: 4px; font-weight: 400; }
+
+/* A start that is not his year is the only one worth a colour, and it gets the
+   quiet one — a December 2026 role is already excluded by class_fit, so this is
+   belt and braces rather than the primary signal. */
+.stag-too_early, .stag-later { color: var(--u-soon); background: var(--u-soon-tint); }
+.stag-match { color: var(--v-strong); background: var(--v-strong-tint); font-weight: 600; }
+/* "start not stated" is the answer for 668 of 734 roles, so it must be the
+   quietest thing on the row while still being present — it is the question to
+   ask on a call, not a defect in the posting. */
+.stag-unstated { opacity: .72; }
+/* The metro breakdown of the current result set, in the Inbox footer. */
+.wherethese { font-size: 12.5px; margin: 18px 0 0; max-width: 88ch; line-height: 1.6; }
+/* Every start verdict has a rule, so test_classes can prove none is missing. */
+.stag-earlier { color: var(--u-soon); }
+.stag-year_only { color: var(--graphite); }
+.stag-other { color: var(--graphite); }
+
+/* ------------------------------------------------------- the profile card */
+.card { max-width: 74ch; }
+.cardtop { display: flex; align-items: baseline; gap: 12px; margin: 0 0 18px; }
+.cardgroup { margin-bottom: 22px; }
+.cardrow {
+  display: grid;
+  grid-template-columns: 150px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.cardlabel { font-size: 12.5px; color: var(--graphite); }
+.cardrow input, .cardrow textarea { font: inherit; font-size: 13px; width: 100%; }
+.cardrow textarea { resize: vertical; line-height: 1.45; }
+.cardvalue.ro {
+  font-size: 13px;
+  color: var(--graphite);
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--rule);
+}
+.cardcopy { font-size: 11.5px; }
+.cardsaved { font-size: 11px; color: var(--v-strong); }
+.cardrow .acterr { grid-column: 2 / -1; font-size: 11.5px; }
+.cardnote {
+  font-size: 12px;
+  color: var(--graphite);
+  border-left: 2px solid var(--rule);
+  padding-left: 10px;
+  margin: 8px 0 0;
+  max-width: 70ch;
+}
+@media (max-width: 640px) {
+  .cardrow { grid-template-columns: 1fr auto; }
+  .cardlabel { grid-column: 1 / -1; }
+  /* The COPY BUTTON too. It was 19px on a phone — the one control on this page
+     whose whole purpose is being tapped, and the smallest thing on it. */
+  .cardrow input, .cardrow textarea, .cardrow button { min-height: 44px; }
+  .cardcopy { padding-left: 12px; padding-right: 12px; }
+}
+
+/* ------------------------------------------------------------- the pulse */
+.pgrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px 40px;
+  margin: 10px 0 4px;
+}
+.pnum { display: flex; flex-direction: column; gap: 1px; }
+.pfig {
+  font-family: var(--data);
+  font-variant-numeric: tabular-nums;
+  font-size: 24px;
+  line-height: 1.1;
+}
+/* A zero is a real answer and must not shout. It is the honest state of this
+   page on the day it ships. */
+.pfig.zero { color: var(--graphite); font-weight: 400; }
+.pnote { font-size: 11.5px; color: var(--graphite); }
+.plabel { font-size: 12.5px; }
+/* Pulse's per-source table. It was ALSO called .prow, which is Gate's
+   three-column phrase table — one class name, two tables, five columns against
+   three. Being written 1100 lines later it won everywhere, so Gate rendered its
+   three cells into the wrong widths, and at =<1280px Gate's own media rule won
+   back and pushed two of Pulse's five cells onto a second implicit row. Neither
+   page errored and neither looked obviously broken. */
+.srow { grid-template-columns: 1fr 70px 70px 90px 110px; }
+@media (max-width: 1280px) { .srow { grid-template-columns: 1fr 62px 62px 82px 100px; } }
+
+/* The Monday retro. Above the day's task, because it is context for choosing
+   rather than a thing to do — below it, it is a report you scroll past. */
+.retro {
+  border-left: 3px solid var(--rule);
+  padding: 10px 0 10px 14px;
+  margin: 0 0 22px;
+  max-width: 74ch;
+}
+.retrolabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--graphite);
+  margin: 0 0 4px;
+}
+.retroline { margin: 0; font-size: 14px; }
+.retroacts { display: flex; gap: 14px; margin: 6px 0 0; font-size: 12.5px; }
+/* The rail button is a link-sized control on a wide screen and a real tap
+   target on a phone. "Copy all as text" and "Confirm one now" are both things
+   you press with a thumb. */
+@media (max-width: 640px) {
+  .railbtn { min-height: 44px; display: inline-flex; align-items: center; }
+}
+/* A sub-heading inside a section needs air above it. "With a referral, and
+   without" sat flush against the figures above it and read as their caption. */
+.section .railhead { margin-top: 22px; }
+.pgrid + .note { margin-top: 14px; }
+
+/* --------------------------------------------------- ask about this data
+ *
+ * The only surface in this app that spends money on a keystroke, so it carries
+ * its own counter and its own price in plain sight. Same vocabulary as
+ * everything else: a section, a hairline, graphite metadata.
+ */
+.ask { max-width: 82ch; }
+.askform { display: flex; gap: 10px; align-items: center; margin: 0 0 4px; }
+.askform input { flex: 1; min-width: 0; font-size: 14px; padding: 7px 9px; }
+.askform .railbtn { margin: 0; white-space: nowrap; }
+.askerr { display: block; margin: 8px 0 0; }
+.askanswer { margin: 14px 0 0; }
+/* The answer is the only thing on this page in body size — it is prose, and it
+   is what you came for. */
+.askbody {
+  font-size: 15px; line-height: 1.6; margin: 0 0 8px;
+  border-left: 2px solid var(--rule); padding-left: 12px; max-width: 74ch;
+  white-space: pre-wrap;
+}
+.askmeta { font-family: var(--data); font-size: 11.5px; color: var(--graphite); margin: 0; }
+/* What it read. Monospaced because it is the literal text that was sent, and
+   scrollable because it is long by design. */
+.askctx {
+  margin: 10px 0 0; padding: 10px 12px;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 3px;
+  font-family: var(--data); font-size: 11.5px; line-height: 1.5;
+  color: var(--graphite);
+  max-height: 340px; overflow: auto; white-space: pre-wrap;
+}
+@media (max-width: 640px) {
+  .askform { flex-direction: column; align-items: stretch; }
+}
+
+/* -------------------------------------------------- what do I do first
+ *
+ * Above the TODAY card, until it is dismissed. Deliberately quieter than the
+ * card below it: this is setup that finishes, and the card is the thing that
+ * comes back every morning. A louder panel above the day's one task would be
+ * the second heading competing with the first.
+ */
+.ff {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 12px 14px 4px;
+  margin: 0 0 22px;
+  max-width: 78ch;
+}
+.ffhead { display: flex; align-items: baseline; gap: 12px; margin: 0 0 8px; flex-wrap: wrap; }
+.ffhead .spacer { flex: 1; }
+.ffkicker { font-size: 13.5px; font-weight: 600; }
+.ffcount { font-family: var(--data); font-size: 11.5px; color: var(--graphite); }
+.fflist { list-style: none; margin: 0; padding: 0; }
+.fflist li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 16px;
+  align-items: baseline;
+  padding: 9px 0;
+  border-top: 1px solid var(--rule);
+}
+.ffwhat { font-size: 14px; }
+.ffnote { font-family: var(--data); font-size: 11.5px; color: var(--graphite); }
+/* The reason, under the thing. Full width so the button keeps its own column
+   and the sentence is not squeezed into a gutter. */
+.ffwhy {
+  grid-column: 1; font-size: 13px; color: var(--graphite);
+  margin-top: 2px; max-width: 68ch;
+}
+.ffgo { grid-column: 2; grid-row: 1 / span 2; align-self: center; margin: 0; white-space: nowrap; }
+/* Finished: one line, still present. Something that vanishes with no trace
+   reads as a bug the first time you go looking for it. */
+.ff.done {
+  display: block; padding: 9px 14px; margin: 0 0 22px;
+  font-size: 13px; color: var(--graphite);
+}
+.ffdonemark { color: var(--band-excellent-fill); font-weight: 600; margin-right: 6px; }
+@media (max-width: 640px) {
+  .fflist li { grid-template-columns: 1fr; }
+  .ffgo { grid-column: 1; grid-row: auto; margin-top: 8px; justify-self: start; }
+}
+
+/* ------------------------------------------------------------- the tour
+ *
+ * A dim page, one thing lit, and a card with a real tail pointing at it.
+ *
+ * THE SCRIM IS FOUR RECTANGLES. A single overlay needs the target lifted above
+ * it with z-index, and these targets live inside grids, a sticky rail and a
+ * position:relative row that each open their own stacking context — "above the
+ * overlay" is not something their children can be without rewriting their
+ * positioning. Four rects around the target's box dim everything else and leave
+ * the target physically untouched, so it stays at full brightness with no
+ * changes to any page's CSS.
+ *
+ * Every colour here is already in the file: the scrim is the same tone the
+ * command palette uses, the ring is the excellent-fit green, the card is paper
+ * on a hairline. No new tokens.
+ */
+.tour { position: fixed; inset: 0; z-index: 80; }
+.tourdim {
+  position: fixed;
+  background: rgba(20, 24, 31, .34);
+  /* The dim panels swallow clicks — that is the modal part. The target itself
+     is not covered by any of them, so it stays readable, and the page keeps
+     scrolling because nothing is position:fixed over the whole viewport. */
+}
+.tourring {
+  position: fixed;
+  border: 2px solid var(--band-excellent-fill);
+  border-radius: 4px;
+  box-shadow: 0 0 0 3px rgba(22, 101, 52, .16);
+  pointer-events: none;
+}
+.tourcard {
+  position: fixed;
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  box-shadow: 0 14px 40px rgba(20, 24, 31, .20);
+  padding: 14px 16px 12px;
+}
+/* The tail. An actual triangle joining the card to the ring — a floating
+   rectangle with a gap makes you work out which of four things it means. */
+.tourtail {
+  position: absolute;
+  top: -8px;
+  width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid var(--rule);
+}
+.tourtail::after {
+  content: "";
+  position: absolute;
+  top: 1px; left: -7px;
+  width: 0; height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 7px solid var(--paper);
+}
+.tourtail.up { top: auto; bottom: -8px; transform: rotate(180deg); }
+.tourlink {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  color: var(--graphite);
+}
+.tourstep {
+  margin: 0 0 2px;
+  font-family: var(--data); font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--graphite);
+}
+.tourtitle { font-size: 16px; font-weight: 600; margin: 0 0 6px; letter-spacing: -.01em; }
+.tourbody { font-size: 13.5px; color: var(--graphite); margin: 0 0 12px; line-height: 1.55; }
+.touracts { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.touracts .spacer { flex: 1; }
+.touracts .railbtn { margin: 0; }
+
+/* At 390px the card goes to the bottom of the screen and the tail is dropped —
+   a tail stretching across half a phone points at nothing. The ring still
+   lights the target, which is the half that matters. */
+.tourcard.bottom {
+  left: 12px; right: 12px; bottom: 12px;
+  top: auto; width: auto; max-width: none;
+}
+
+/* The way out, in the header, for the whole tour. Positioned rather than placed
+   inside the topbar so layout.js does not have to know a tour is running. */
+.tourexit {
+  position: fixed;
+  top: 12px; right: 20px;
+  font: inherit; font-size: 12.5px;
+  padding: 5px 12px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.tourexit:hover { background: var(--card); }
+@media (max-width: 640px) { .tourexit { top: 10px; right: 12px; } }
+
+/* ------------------------------------------------- the palette and overlays */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(20, 24, 31, .28);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 16px 16px;
+}
+.overlaycard {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  box-shadow: 0 18px 50px rgba(20, 24, 31, .22);
+  padding: 16px 18px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.palettecard { padding: 12px; }
+.paletteq {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  padding: 9px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+.paletterows { list-style: none; margin: 8px 0 0; padding: 0; }
+.paletterows li { border-radius: 3px; }
+.paletterows li.on { background: var(--card); }
+.paletterows li a {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 8px;
+  text-decoration: none;
+  font-size: 13px;
+}
+.pkind {
+  font-family: var(--data);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--graphite);
+  min-width: 62px;
+}
+.paletterows .plabel { flex: 1; }
+.keys { border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+.keys td { padding: 3px 14px 3px 0; vertical-align: top; }
+
+/* "Hours today?" in the rail. Asked once, never nagged. */
+.hours { margin-top: 4px; }
+.hoursq { margin: 0 0 6px; font-size: 13px; }
+.hoursbtns { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.hoursbtns .railbtn { margin-top: 0; min-width: 34px; text-align: center; }
+.hoursset { margin: 0; font-size: 13px; }
+/* What the trim moved. A list that shortens silently is one you distrust. */
+.trimmed {
+  font-size: 12.5px;
+  color: var(--graphite);
+  border-left: 2px solid var(--u-soon);
+  padding-left: 10px;
+  margin: 10px 0 0;
+  max-width: 74ch;
+}
+/* The last run, linked from the freshness stamp. A failed run must not read as
+   calm — the stamp is computed from the data and cannot see a failure. */
+.freshness.failed a { color: var(--u-now); font-weight: 600; }
+/* Text for a screen reader only. The first of these in the file — the ✓ beside
+   "last run" is a glyph, and a glyph that carries a verdict has to say it in
+   words to anyone not looking at it. */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+}
+.runsep { color: var(--rule); }
+.runlink { color: var(--graphite); font-size: 11px; text-decoration: none; }
+.runlink:hover { color: var(--ink); }
+.rundot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  margin-right: 4px; vertical-align: 1px; background: var(--graphite);
+}
+.rundot.ok { background: var(--v-strong); }
+/* The tick carries the same verdict as the dot, in a form that needs no key.
+   --v-strong is the "read off the source" green, which is what a successful run
+   is: a fact the workflow wrote about itself, not an inference from the data. */
+.runtick { color: var(--v-strong); font-weight: 600; }
+
+/* The interview note. Compiled from public reports, which is a weaker source
+   than anything else here — hence the disclaimer under every one. */
+.ivnote { max-width: 78ch; }
+.ivnote h4 { margin: 0 0 6px; }
+.ivhead {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--graphite);
+  margin: 12px 0 4px;
+}
+.ivlist { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+.ivlist li { margin-bottom: 3px; }
+/* The questions only a human can answer. Marked, because they are the reason
+   to have a call at all rather than more things to read. */
+.ivask li { border-left: 2px solid var(--band-strong); padding-left: 8px; margin-left: -8px; }
+.ivdisclaimer {
+  font-size: 11.5px;
+  color: var(--graphite);
+  margin: 12px 0 0;
+  font-style: italic;
+}
+
+/* The email settings block on /about, and the preview of the test message. */
+.notifylist .when { font-family: var(--data); font-size: 12px; }
+.mailpreview {
+  font-family: var(--data);
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--rule);
+  border-radius: 3px;
+  padding: 12px 14px;
+  max-width: 78ch;
+  /* Long links must wrap rather than push the page sideways — this block is the
+     one place a raw URL is shown in full. */
+  overflow-wrap: anywhere;
+}
+
+/* ═══════════════════════════════════════════════ the 390px pass
+ *
+ * Every table in this app is a CSS grid with fixed columns, which is right at
+ * 1440 and is the wrong shape entirely on a phone: six columns in 390px gives
+ * each about 55px, and a role title is not a 55px thing. The overflow test says
+ * the page does not scroll sideways — true, because the text wraps — but a
+ * column of six wrapped words is not a row you can read.
+ *
+ * So under 640px the grids become STACKED CARDS. Same markup, same order, no
+ * component changes: each row becomes a block, the first cell is the heading,
+ * and the numeric cells sit in a wrapped line under it with their own labels
+ * supplied by ::before — because "54" with no label means nothing once the
+ * header row is gone.
+ *
+ * This is where the app is actually read: between classes, on a phone.
+ */
+@media (max-width: 640px) {
+  /* The row grids themselves are turned into cards in the block above — this
+     one is the per-page detail that follows from it. They were two blocks
+     declaring the same properties on the same selectors 1,100 lines apart, and
+     the later one won silently. */
+  .row .title, .crow .title { font-size: 15px; font-weight: 600; order: -1; }
+  .row .co, .crow .co { font-size: 12.5px; color: var(--graphite); }
+  .row .loc, .row .num, .row .lvl { font-size: 12px; color: var(--graphite); }
+
+  /* The band and the verb belong together on one line under the title. */
+  .row .rowend { display: flex; justify-content: flex-start; gap: 10px; margin-top: 6px; }
+  .row .chev { display: none; }         /* the whole card is the tap target */
+
+  /* ---- Companies ---- */
+  .crow .count40, .crow .num { display: inline-block; margin-right: 14px; }
+  .crow .count40 { border-left: 0; padding-left: 0; }
+  /* Labels, because a bare number under a card has lost its column heading. */
+  .crow .count40::before { content: "fits you: "; color: var(--graphite); font-family: var(--body); }
+  .crow .comenu { justify-content: flex-start; margin-top: 4px; }
+  .comenubody { right: auto; left: 0; width: min(300px, calc(100vw - 48px)); }
+
+  /* ---- Forecast ---- */
+  .drow .dnote { display: block; font-size: 12px; color: var(--graphite); }
+  .frow .num, .drow .num { text-align: left; }
+
+  /* ---- Pulse ---- */
+  .pgrid { gap: 18px 26px; }
+  .pfig { font-size: 20px; }
+
+  /* ---- the palette ---- */
+  .overlay { padding: 6vh 10px 10px; }
+  .overlaycard { max-height: 82vh; }
+  .paletterows li a { flex-wrap: wrap; gap: 4px 10px; }
+  .pkind { min-width: 0; }
+
+  /* ---- the rail's own blocks, when they fall back into the page ---- */
+  .sheet, .brief { padding-left: 16px; padding-right: 16px; }
+}
+
+/* Inbox filters: a lot of controls, and on a phone they are the first thing
+   between you and the list. Collapsed behind a disclosure, open on desktop. */
+@media (max-width: 640px) {
+  .controls { gap: 8px 12px; }
+  .controls.toggles { flex-direction: column; align-items: flex-start; }
+  .controls select, .controls input[type="text"] { min-height: 44px; }
+  /* The LABEL is the tap target, not the 13px checkbox inside it. Aiming a
+     thumb at a native checkbox is a miss waiting to happen; the words beside
+     it are what a person actually points at. */
+  .controls label { min-height: 44px; display: flex; align-items: center; gap: 8px; }
+  .controls input[type="checkbox"] { width: 20px; height: 20px; }
+}
+
+/* Tap targets on a phone.
+ *
+ * Measured, not guessed: at 390px the nav links were 25px, the row verbs 24,
+ * the ⋯ 22 and the Companies star 14. All of those are things you press with a
+ * thumb, and 44px is the size a thumb actually hits. The rule is scoped to
+ * controls that DO something — a link inside a paragraph of prose stays inline,
+ * because turning every link in a sentence into a 44px block would break the
+ * sentence. */
+@media (max-width: 640px) {
+  .nav a { min-height: 44px; display: inline-flex; align-items: center; }
+  .pact, .act, .qwhat, .star, .sortbtn, .focusbtn, .comore {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* The row's own action cluster needs room once its buttons are 44px. */
+  .rowacts { gap: 4px; }
+  .actbtns { flex-wrap: wrap; gap: 4px 10px; }
+}
+
+/* ---------------------------------------------------------- resume variants */
+/* Which of the two resumes to attach, beside the thing being applied to.
+   Deliberately quiet: it is an answer to a question the owner already has, not a
+   thing to notice. Graphite on the page ground, no fill — a coloured badge here
+   would compete with the urgency colours, which mean something. */
+.restag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+  vertical-align: baseline;
+  color: var(--graphite);
+  border: 1px solid var(--rule);
+}
+
+/* The tech/finance switch above the three profile bullets. Reuses .act so it
+   is the same control as every other toggle in the app rather than a new one. */
+.varswitch { display: flex; gap: 6px; margin: 0 0 10px 0; }
+
+/* The reason a verb was demoted, beside the Watch it produced. Gray and quiet:
+   it is an explanation, not a warning — the role is still worth knowing about,
+   it is just not today's application. */
+.pactnote {
+  /* LAST on the line, whatever the DOM order. Without this the 100% basis
+     pushed Save, Hide and the chevron below the note, moving controls that
+     are in the same place on every other row. */
+  order: 99;
+  flex-basis: 100%;            /* its own line, never beside the verb */
+  margin-left: 0;
+  text-align: right;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--graphite);
+  white-space: normal;         /* it is 39 characters in a 132px column */
+}
+
+/* ------------------------------------------------------------- /resumes */
+/* Side by side on desktop, stacked on a phone. The PDFs are tall, so the
+   columns get equal width and each frame a fixed height rather than growing to
+   fit — two full pages at natural height would put the "Text the tool reads"
+   expander a screen and a half below the fold. */
+.resgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 18px; }
+.rescol { min-width: 0; }
+.reshead { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 12px; }
+.reshead h2 { margin: 0; font-size: 18px; }
+.resgoes { grid-column: 1 / -1; margin: 0; font-size: 13px; color: var(--graphite); }
+.resmeta { grid-column: 1 / -1; margin: 0 0 8px 0; font-family: var(--data); font-size: 11px; }
+.resdl { grid-row: 1; grid-column: 2; }
+.resframe {
+  display: block; width: 100%; height: 620px;
+  border: 1px solid var(--rule); background: var(--paper);
+}
+.restext { margin-top: 10px; }
+.restext > summary { cursor: pointer; font-size: 13px; }
+.resnote { font-size: 12px; margin: 8px 0 4px 0; }
+.resmd { font-size: 12px; line-height: 1.5; }
+.resmd h3 { font-size: 14px; margin: 10px 0 2px 0; }
+.resmd h4 { font-size: 12px; margin: 12px 0 4px 0; letter-spacing: 0.04em; color: var(--graphite); }
+.resmd p { margin: 2px 0; }
+.resmd ul { margin: 4px 0 8px 0; padding-left: 18px; }
+.resmd li { margin: 3px 0; }
+.resmd hr { border: 0; border-top: 1px solid var(--rule); margin: 12px 0; }
+
+@media (max-width: 900px) {
+  .resgrid { grid-template-columns: 1fr; gap: 22px; }
+  /* Shorter on a phone: 620px of PDF is most of the screen before the heading
+     of the second one is reachable. */
+  .resframe { height: 460px; }
+}
+
+/* The posting-URL editor, on a manually added role only. */
+.joburlnote { font-size: 12px; margin: 0 0 6px 0; }
+.joburlrow { display: flex; align-items: center; gap: 8px; }
+.joburlrow input { flex: 1 1 auto; min-width: 0; font-size: 13px; padding: 4px 6px; }
+
+/* ---------------------------------------------------- the apply log (/applications)
+ *
+ * THE FAILURE BANNER IS THE POINT OF THIS BLOCK. A paste that parses to
+ * nothing must not read as a quiet success, and the rollback bug is the
+ * standing warning here: that error message rendered correctly, was clipped by
+ * the width of its column, and a failed save therefore looked exactly like
+ * never having clicked. So this is full-width, in flow, and has no overflow
+ * rule that can hide it. */
+.importfail {
+  border-left: 3px solid var(--alert);
+  background: rgba(185, 61, 11, .06);
+  padding: 8px 10px;
+  margin: 10px 0 0 0;
+  font-size: 13px;
+}
+.importfail p { margin: 0 0 4px 0; }
+.importfail p:last-child { margin-bottom: 0; }
+
+/* The paste, echoed back. It WRAPS rather than scrolling: a scrollbar on a
+ * 400-character echo is a thing to discover, and the whole point is that the owner
+ * can see which paste failed without hunting for it. */
+.importecho {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--paper, #edeff2);
+  border: 1px solid var(--rule, #d7dbe0);
+  font-size: 12px;
+  max-height: 9em;
+  overflow-y: auto;
+}
+
+.unmatched { list-style: none; margin: 8px 0 0 0; padding: 0; }
+.unmatched li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0; border-bottom: 1px solid var(--rule, #d7dbe0);
+  flex-wrap: wrap;
+}
+.unmatched .who { font-weight: 600; }
+
+/* WIDE CONTENT SCROLLS INSIDE ITS OWN BOX, never the page. A location field
+ * can hold thirteen remote states joined with semicolons -- one 331-character
+ * string put a horizontal scrollbar on the whole app once. */
+.tablewrap { overflow-x: auto; }
+table.apps { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.apps th, table.apps td {
+  text-align: left; padding: 4px 10px 4px 0; vertical-align: top;
+  border-bottom: 1px solid var(--rule, #d7dbe0);
+}
+table.apps th { font-weight: 600; }
+table.apps .nowrap { white-space: nowrap; }
+table.apps .tag { color: var(--alert); font-size: 12px; }
+/* A blocked or skipped application is not a failure of the owner's and is not
+ * coloured like one; it is greyed because it is a row he may want to retry. */
+table.apps tr.st-blocked td, table.apps tr.st-skipped td,
+table.apps tr.st-noposting td { color: var(--graphite); }

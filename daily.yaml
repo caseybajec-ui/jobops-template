@@ -1,0 +1,85 @@
+# Manual items — the pipeline's blind spots, which are usually the highest-value
+# work in the search. Edit this file freely; the daily view renders it at the top.
+#
+# The tool cannot see consulting applications, campus recruiting, or alumni
+# outreach, and those tend to matter more than anything it CAN see. So they go
+# first.
+#
+# done: true  removes an item from the view (kept here for the record).
+#
+# due: a calendar date (YYYY-MM-DD). The four starter items below carry none,
+# because a template cannot know your cycle; set them at setup or leave them
+# undated. An undated item sorts after every dated one.
+#
+# minutes: how long the thing actually takes. The Daily ladder will not put an
+# item at the top that does not fit the time available, so this is load-bearing
+# rather than decoration. It is a STATED number: no model ever guesses it, and
+# nothing infers it from the text. Adjust these freely — they are estimates of
+# your time, not the tool's.
+#
+# steps: the smaller pieces an item breaks into when you press "Stuck". These are
+# written BY HAND, and that is the point — nothing generates them. A model-invented
+# breakdown of a form you sign under penalty of perjury would cost money to be
+# wrong about. An item with no steps still records that it is stuck; it just
+# cannot be split.
+#
+# NOTE: this file is the seed record, not the live source. seed_items.py moves
+# these into the items table and the app reads the database. Editing a line here
+# changes its id and re-adds it as a new item; `python seed_items.py` carries
+# minutes and steps across for the rows that already exist.
+
+items:
+  - text: "Confirm the application windows for your three target programs on the firms' own sites"
+    why: >
+      Every row in the deadlines block ships unconfirmed and stale on purpose.
+      A date read from a tracker is a prompt to check, not a fact; the only way
+      a window becomes verified is you reading the firm's page and typing it in.
+    # due: set at setup
+    minutes: 30
+    steps:
+      - text: "Open the first firm's careers page and record what it says about dates"
+        minutes: 10
+      - text: "Open the second firm's careers page and record what it says about dates"
+        minutes: 10
+      - text: "Open the third firm's careers page and record what it says about dates"
+        minutes: 10
+    done: false
+
+  - text: "Pull 10 alumni names from your school's directory for your top two companies"
+    why: >
+      See the Start here queue on the Companies page for which titles to search
+      per company, and what to ask. The two biggest blockers in most new-grad
+      searches — a degree screen and a years-of-experience line — are routed
+      around by a referral, not by a project.
+    # due: set at setup
+    minutes: 30
+    steps:
+      - text: "Pull 5 alumni names at your first company"
+        minutes: 15
+      - text: "Pull 5 alumni names at your second company"
+        minutes: 15
+    done: false
+
+  - text: "Export your resume PDFs into web/public/resume/ and run the converter"
+    why: >
+      The tool reasons from resume_tech.md and resume_finance.md, which are
+      GENERATED from resume-tech.pdf and resume-finance.pdf by
+      `python resume_from_pdf.py install <src.pdf> <variant>`. Until both exist,
+      the pack writer and the critic have nothing true to quote.
+    # due: set at setup
+    minutes: 20
+    steps:
+      - text: "Export the tech variant and run `python resume_from_pdf.py install <pdf> tech`"
+        minutes: 10
+      - text: "Export the finance variant and run `python resume_from_pdf.py install <pdf> finance`"
+        minutes: 10
+    done: false
+
+  - text: "Write the first five contacts into People"
+    why: >
+      Follow-ups owed, the networking tier on Daily and the outreach queue all
+      read the contacts table, and every one of them renders as its own setup
+      action until it has a row. Five is the weekly cadence in config.yaml.
+    # due: set at setup
+    minutes: 25
+    done: false
