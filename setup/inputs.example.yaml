@@ -9,9 +9,14 @@
 # but you.
 
 name: Jordan Reyes
+first_name: Jordan                     # how a message signs off; defaults to the first word of name
 email: jordan.reyes@example.edu        # the ONLY address the digest ever goes to; also the form default
+email_personal: null                   # optional second inbox the bots watch (LinkedIn, personal)
 phone: null                            # optional; only the profile card uses it
 linkedin_url: https://www.linkedin.com/in/jordan-reyes-example/
+monthly_cap: 10.00                     # Anthropic spend cap the scorer refuses past, USD per month
+notifications_from: null               # a sender on a domain verified in Resend, e.g. "JobOps <jobops@yourdomain.com>";
+                                       # null leaves the nightly email off until you have one
 
 school: Westlake University, Hayden School of Business
 school_short: Westlake Hayden          # how you say it in a message ("I'm a Westlake Hayden senior")
@@ -36,6 +41,8 @@ salary_min: 85000
 
 # The kinds of role you want, in your words. The setup step turns these into
 # the title filters in companies.yaml and the targets block in profile.json.
+# tier_2 is optional: a sentence about secondary targets, if you have any.
+tier_2: Strategy consulting analyst programs and VC analyst programs.
 job_types:
   - associate product manager / APM program
   - product operations

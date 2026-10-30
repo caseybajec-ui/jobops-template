@@ -51,6 +51,9 @@ else:
     if p:
         if "_readme" in p:
             bad("profile.json still has the example's _readme key.")
+        if "_todo" in p:
+            bad("profile.json still has the `_todo` marker: evidence, skills, activities and "
+                "interests have not been written from the resume (SETUP.md step 1).")
         for k in ("name", "graduation", "school", "owner", "citizenship", "clearance",
                   "evidence", "targets", "hard_no", "skills"):
             if k not in p:
