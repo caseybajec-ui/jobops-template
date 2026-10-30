@@ -140,8 +140,8 @@ programs with no dates. Three edits:
 - `preferences`: `graduation_year` from `graduation`; `preferred_metros`,
   `home_metro`, `remote_acceptable`, `salary_min` from inputs. Metro codes
   must exist in `web/lib/geo.js` `METROS`; add a metro there (code, label,
-  city keywords) if theirs is missing, and run `node web/test_geo.mjs` if
-  it exists.
+  city keywords) if theirs is missing, and run `node test_prefs.mjs` from
+  `web/` afterwards.
 - `notifications.from`: an address on a domain they have verified in Resend,
   or leave the placeholder and set `notifications.enabled: false` until they
   have one. The recipient is never configured here; it is `owner.email`.
