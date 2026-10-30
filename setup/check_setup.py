@@ -133,22 +133,22 @@ else:
         bad("config.yaml notifications.from is the placeholder but notifications are enabled; "
             "set a Resend-verified sender or enabled: false.")
 
-# ---------------------------------------------------- placeholders anywhere
-SKIP_DIRS = {".git", "node_modules", ".next", ".next-precommit", ".next-verify", "__pycache__", "setup"}
-for root, dirs, files in os.walk("."):
-    dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
-    for f in files:
-        path = os.path.join(root, f).replace("\\", "/")[2:]
-        if path in PLACEHOLDER_OK or not f.endswith((".json", ".yaml", ".yml", ".md", ".js", ".mjs", ".py")):
-            continue
-        try:
-            text = read(path)
-        except Exception:  # noqa: BLE001
-            continue
-        for ph in PLACEHOLDERS:
-            if ph in text:
-                bad(f"{path} still contains {ph!r}.")
-                break
+# ------------------------------------------- placeholders in the data files
+#
+# The DATA files are the ones that must be this person's. Code and tests keep
+# the fictional example in comments and fixtures on purpose, and the
+# generated modules are rebuilt from the data files on the next build.
+DATA_FILES = ["profile.json", "projects.md", "resume_tech.md", "resume_finance.md",
+              "companies.yaml", "config.yaml", "daily.yaml", "manual_jobs.yaml",
+              "cover_letter_example.md"]
+for path in DATA_FILES:
+    if not os.path.exists(path):
+        continue
+    text = read(path)
+    for ph in PLACEHOLDERS:
+        if ph in text:
+            bad(f"{path} still contains {ph!r}.")
+            break
 
 if os.path.exists("projects.md") and "Jordan Reyes" in read("projects.md"):
     bad("projects.md still describes the example person's projects (SETUP.md step 3).")

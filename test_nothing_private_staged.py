@@ -101,7 +101,11 @@ SECRET_PATTERNS = [
     ("a database URL with credentials", re.compile(r"postgres(?:ql)?://[^\s/]+:[^\s@]+@")),
     ("an Anthropic API key", re.compile(r"sk-ant-[A-Za-z0-9_\-]{20,}")),
     ("a password assignment", re.compile(r"JOBOPS_PASSWORD\s*=\s*\S+")),
-    ("a personal email address", re.compile(r"caseybajec@(?:icloud|gmail)\.com")),
+    # The original listed its owner's personal address here. A template cannot
+    # know yours; the resume and profile are exempt below, and anything else
+    # carrying an address at a consumer mail domain is a page dump.
+    ("a personal email address at a consumer domain",
+     re.compile(r"[A-Za-z0-9._%+-]+@(?:gmail|icloud|yahoo|outlook|hotmail|me)\.com")),
     # THE PROFILE CARD'S OWN DATA. Phase 5 put the owner's street address and phone
     # number into the database, which is where they belong -- and one debug
     # script away from a file. That is not hypothetical: a script once wrote the

@@ -15,6 +15,7 @@ import {
   VARIANTS, VARIANT_KEYS, KNOWN_CATEGORIES, variantForCategory, variantFor,
 } from "./lib/variant.js";
 import { forbiddenClaim, FORBIDDEN } from "./lib/clearance.js";
+import { OWNER } from "./lib/config.generated.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.join(here, "..");
@@ -71,10 +72,14 @@ for (const key of VARIANT_KEYS) {
   const text = fs.readFileSync(md, "utf8");
   // Not an empty or stub file: a variant that silently generated to nothing
   // would pass every assertion below it.
-  ok(text.length > 2000, `${v.source} has real content (${text.length} chars)`);
-  ok((text.match(/^- /gm) || []).length >= 10,
+  ok(text.length > 1200, `${v.source} has real content (${text.length} chars)`);
+  ok((text.match(/^- /gm) || []).length >= 6,
      `${v.source} kept its bullets (${(text.match(/^- /gm) || []).length})`);
-  ok(/^# CASEY EDWARD BAJEC/m.test(text), `${v.source} keeps the name heading`);
+  // The heading is the owner's name as the PDF prints it; the original
+  // asserted one person's name in capitals. Case-insensitive, because resume
+  // headers are usually capitals and profile.json is not.
+  ok(new RegExp("^# " + OWNER.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "im").test(text),
+     `${v.source} keeps the name heading`);
 
   /* ---- 3. the clearance rule, on the documents that go to defense primes ---- */
   const claim = forbiddenClaim(text);

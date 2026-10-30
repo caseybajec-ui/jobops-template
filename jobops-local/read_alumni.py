@@ -115,6 +115,14 @@ def idle_seconds():
     machine -- a session that acts on its own at 3am is the shape that gets
     noticed, and it is also not what the owner agreed to.
     """
+    if not hasattr(ctypes, "windll"):
+        # Not Windows. UNKNOWN IS NOT ZERO: the reader was written against
+        # the Windows input API, and on any other OS it cannot tell whether
+        # the owner is at the machine, so gate() skips. A macOS or Linux
+        # owner who wants the reader ports this one function; nothing else
+        # in the file is platform-specific.
+        return None
+
     class LASTINPUTINFO(ctypes.Structure):
         _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_uint)]
 
